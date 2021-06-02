@@ -10,7 +10,7 @@ import { AuctionRenderCard } from '../../components/AuctionRenderCard';
 import { Link } from 'react-router-dom';
 import { CardLoader } from '../../components/MyLoader';
 import { useMeta } from '../../contexts';
-import BN from 'bn.js';
+import moment from 'moment';
 
 const { TabPane } = Tabs;
 
@@ -29,26 +29,25 @@ export const HomeView = () => {
   const heroAuction = useMemo(
     () =>
       auctions.filter(a => {
-        // const now = moment().unix();
-        return !a.auction.info.ended();
+        const now = moment().unix();
+        let delta = (a.auction.info.endedAt?.toNumber() || 0) - now;
+
         // filter out auction for banner that are further than 30 days in the future
-        // return Math.floor(delta / 86400) <= 30;
+        return Math.floor(delta / 86400) <= 30;
       })?.[0],
     [auctions],
   );
 
-  const liveAuctions = auctions
-  .sort((a, b) => a.auction.info.endedAt?.sub(b.auction.info.endedAt || new BN(0)).toNumber() || 0)
-  .filter((m, idx) => idx < 10);
-
-  const liveAuctionsView = (
+  const liveAuctions = (
     <Masonry
       breakpointCols={breakpointColumnsObj}
       className="my-masonry-grid"
       columnClassName="my-masonry-grid_column"
     >
       {!isLoading
-        ? liveAuctions.map((m, idx) => {
+        ? auctions
+            .filter((m, idx) => idx < 10)
+            .map((m, idx) => {
               if (m === heroAuction) {
                 return;
               }
@@ -94,14 +93,14 @@ export const HomeView = () => {
       <Layout>
         <Content style={{ display: 'flex', flexWrap: 'wrap' }}>
           <Col style={{ width: '100%', marginTop: 10 }}>
-            {liveAuctions.length > 0 && (<Row>
+            <Row>
               <Tabs>
                 <TabPane>
                   <h2>Live Auctions</h2>
-                  {liveAuctionsView}
+                  {liveAuctions}
                 </TabPane>
               </Tabs>
-            </Row>)}
+            </Row>
             <Row>
               <Tabs>
                 <TabPane>
