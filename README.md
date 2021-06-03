@@ -23,17 +23,12 @@ $ cd js
 $ ./deploy-web.sh
 ```
 
-## Rust Programs
-
-The Rust programs will soon be added to this repo with JavaScript
-bindings that allow interactivity.
-
 ## Community
 
 We have a few channels for contact:
 
 - [Discord](https://discord.gg/metaplex)
-- [@metaplexNFT](https://twitter.com/metaplexNFT) on Twitter
+- [@metaplex\_](https://twitter.com/metaplex_) on Twitter
 - [GitHub Issues](https://github.com/metaplex-foundation/metaplex/issues)
 
 # Protocol

@@ -17,11 +17,6 @@ export const PreSaleBanner = ({
   auction,
 }: IPreSaleBanner) => {
   const art = useArt(auction?.thumbnail.metadata.pubkey);
-
-  if (!auction) {
-    return null;
-  }
-
   return (
     <Row style={{ height: 400 }}>
       <Col span={12} style={{ display: 'flex' }}>
