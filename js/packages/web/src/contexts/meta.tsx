@@ -25,6 +25,8 @@ import {
   BIDDER_POT_LEN,
   decodeVault,
   Vault,
+  setProgramIds,
+  useConnectionConfig,
 } from '@oyster/common';
 import { MintInfo, Token, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import {
@@ -42,7 +44,7 @@ import {
   TransactionInstruction,
 } from '@solana/web3.js';
 import BN from 'bn.js';
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   AuctionManager,
   AuctionManagerStatus,
@@ -117,7 +119,7 @@ const MetaContext = React.createContext<MetaContextState>({
 
 export function MetaProvider({ children = null as any }) {
   const connection = useConnection();
-  const PROGRAM_IDS = programIds();
+  const { env } = useConnectionConfig();
 
   const [metadata, setMetadata] = useState<ParsedAccount<Metadata>[]>([]);
   const [metadataByMint, setMetadataByMint] = useState<
@@ -172,6 +174,19 @@ export function MetaProvider({ children = null as any }) {
     setSafetyDepositBoxesByVaultAndIndex,
   ] = useState<Record<string, ParsedAccount<SafetyDepositBox>>>({});
 
+  const updateMints = useCallback(async (metadataByMint) => {
+    try {
+      const m = await queryExtendedMetadata(
+        connection,
+        metadataByMint,
+      );
+      setMetadata(m.metadata);
+      setMetadataByMint(m.mintToMetadata);
+    } catch (er) {
+      console.error(er);
+    }
+  }, [setMetadata, setMetadataByMint]);
+
   useEffect(() => {
     let dispose = () => {};
     (async () => {
@@ -183,6 +198,8 @@ export function MetaProvider({ children = null as any }) {
           connection.getProgramAccounts(programIds().metaplex),
         ])
       ).flat();
+
+      await setProgramIds(env);
 
       const tempCache = {
         metadata: {},
@@ -289,16 +306,7 @@ export function MetaProvider({ children = null as any }) {
       setWhitelistedCreatorsByCreator(tempCache.whitelistedCreatorsByCreator);
       setIsLoading(false);
 
-      try {
-        const m = await queryExtendedMetadata(
-          connection,
-          tempCache.metadataByMint,
-        );
-        setMetadata(m.metadata);
-        setMetadataByMint(m.mintToMetadata);
-      } catch (er) {
-        console.error(er);
-      }
+      updateMints(tempCache.metadataByMint);
     })();
 
     return () => {
@@ -322,6 +330,8 @@ export function MetaProvider({ children = null as any }) {
     setPayoutTickets,
     setStore,
     setWhitelistedCreatorsByCreator,
+    updateMints,
+    env,
   ]);
 
   useEffect(() => {
@@ -384,13 +394,10 @@ export function MetaProvider({ children = null as any }) {
           setMasterEditionsByOneTimeAuthMint,
         );
 
-        // setMetadataByMint(latest => {
-        //   queryExtendedMetadata(
-        //     connection,
-        //     latest,
-        //   );
-        //   return latest;
-        // });
+        setMetadataByMint(latest => {
+          updateMints(latest);
+          return latest;
+        });
       },
     );
 
@@ -437,6 +444,7 @@ export function MetaProvider({ children = null as any }) {
     setPayoutTickets,
     setStore,
     setWhitelistedCreatorsByCreator,
+    updateMints
   ]);
 
   const filteredMetadata = useMemo(
@@ -640,9 +648,10 @@ const processMetaplexAccounts = async (
   setWhitelistedCreatorsByCreator: any,
 ) => {
   try {
+    const STORE_ID = programIds().store.toBase58()
     if (a.account.data[0] === MetaplexKey.AuctionManagerV1) {
       const storeKey = new PublicKey(a.account.data.slice(1, 33));
-      if (storeKey.toBase58() === programIds().store.toBase58()) {
+      if (storeKey.toBase58() === STORE_ID) {
         const auctionManager = decodeAuctionManager(a.account.data);
         // An initialized auction manager hasnt been validated, so we cant show it to users.
         // Could have any kind of pictures in it.
@@ -688,7 +697,7 @@ const processMetaplexAccounts = async (
         account: a.account,
         info: store,
       };
-      if (a.pubkey.toBase58() === programIds().store.toBase58()) {
+      if (a.pubkey.toBase58() === STORE_ID) {
         setStore(account);
       }
     } else if (a.account.data[0] === MetaplexKey.WhitelistedCreatorV1) {
