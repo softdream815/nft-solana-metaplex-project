@@ -10,8 +10,7 @@ import BN from 'bn.js';
 
 export const VAULT_PREFIX = 'vault';
 export enum VaultKey {
-  Uninitialized = 0,
-  VaultV1 = 3,
+  VaultV1 = 0,
   SafetyDepositBoxV1 = 1,
   ExternalPriceAccountV1 = 2,
 }
