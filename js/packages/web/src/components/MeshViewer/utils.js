@@ -15,6 +15,7 @@ import {
 //    Zoom - middle mouse, or mousewheel / touch: two-finger spread or squish
 //    Pan - right mouse, or left mouse + ctrl/meta/shiftKey, or arrow keys / touch: two-finger move
 
+
 const TouchableOrbitControls = function (object, domElement) {
   if (domElement === undefined)
     console.warn(
@@ -573,7 +574,7 @@ const TouchableOrbitControls = function (object, domElement) {
   }
 
   function handleTouchStartRotate(event) {
-    if (event.touches.length === 1) {
+    if (event.touches.length == 1) {
       rotateStart.set(event.touches[0].pageX, event.touches[0].pageY);
     } else {
       const x = 0.5 * (event.touches[0].pageX + event.touches[1].pageX);
@@ -584,7 +585,7 @@ const TouchableOrbitControls = function (object, domElement) {
   }
 
   function handleTouchStartPan(event) {
-    if (event.touches.length === 1) {
+    if (event.touches.length == 1) {
       panStart.set(event.touches[0].pageX, event.touches[0].pageY);
     } else {
       const x = 0.5 * (event.touches[0].pageX + event.touches[1].pageX);
@@ -616,7 +617,7 @@ const TouchableOrbitControls = function (object, domElement) {
   }
 
   function handleTouchMoveRotate(event) {
-    if (event.touches.length === 1) {
+    if (event.touches.length == 1) {
       rotateEnd.set(event.touches[0].pageX, event.touches[0].pageY);
     } else {
       const x = 0.5 * (event.touches[0].pageX + event.touches[1].pageX);
@@ -639,7 +640,7 @@ const TouchableOrbitControls = function (object, domElement) {
   }
 
   function handleTouchMovePan(event) {
-    if (event.touches.length === 1) {
+    if (event.touches.length == 1) {
       panEnd.set(event.touches[0].pageX, event.touches[0].pageY);
     } else {
       const x = 0.5 * (event.touches[0].pageX + event.touches[1].pageX);
