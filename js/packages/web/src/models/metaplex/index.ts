@@ -19,12 +19,14 @@ export const METAPLEX_PREFIX = 'metaplex';
 export const ORIGINAL_AUTHORITY_LOOKUP_SIZE = 33;
 
 export enum MetaplexKey {
-  AuctionManagerV1 = 0,
+  Uninitialized = 0,
   OriginalAuthorityLookupV1 = 1,
   BidRedemptionTicketV1 = 2,
   StoreV1 = 3,
   WhitelistedCreatorV1 = 4,
   PayoutTicketV1 = 5,
+  SafetyDepositValidationTicketV1 = 6,
+  AuctionManagerV1 = 7,
 }
 
 export class PayoutTicket {
@@ -688,12 +690,17 @@ export async function getOriginalAuthority(
 
 export async function getWhitelistedCreator(creator: PublicKey) {
   const PROGRAM_IDS = programIds();
+  const store = PROGRAM_IDS.store;
+  if (!store) {
+    throw new Error('Store not initialized');
+  }
+
   return (
     await PublicKey.findProgramAddress(
       [
         Buffer.from(METAPLEX_PREFIX),
         PROGRAM_IDS.metaplex.toBuffer(),
-        PROGRAM_IDS.store.toBuffer(),
+        store.toBuffer(),
         creator.toBuffer(),
       ],
       PROGRAM_IDS.metaplex,
