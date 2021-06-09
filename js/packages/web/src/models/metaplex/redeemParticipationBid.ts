@@ -30,10 +30,6 @@ export async function redeemParticipationBid(
   tokenPaymentAccount: PublicKey,
 ) {
   const PROGRAM_IDS = programIds();
-  const store = PROGRAM_IDS.store;
-  if (!store) {
-    throw new Error('Store not initialized');
-  }
 
   const { auctionKey, auctionManagerKey } = await getAuctionKeys(vault);
 
@@ -115,7 +111,7 @@ export async function redeemParticipationBid(
       isWritable: false,
     },
     {
-      pubkey: store,
+      pubkey: PROGRAM_IDS.store,
       isSigner: false,
       isWritable: false,
     },

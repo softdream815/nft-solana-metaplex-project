@@ -15,17 +15,13 @@ export async function setStore(
   instructions: TransactionInstruction[],
 ) {
   const PROGRAM_IDS = programIds();
-  const store = PROGRAM_IDS.store;
-  if (!store) {
-    throw new Error('Store not initialized');
-  }
 
   const value = new SetStoreArgs({ public: isPublic });
   const data = Buffer.from(serialize(SCHEMA, value));
 
   const keys = [
     {
-      pubkey: store,
+      pubkey: PROGRAM_IDS.store,
       isSigner: false,
       isWritable: true,
     },
