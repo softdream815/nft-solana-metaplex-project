@@ -64,23 +64,25 @@ export const PROGRAM_IDS = [
 ];
 
 const getStoreID = async () => {
-  console.log(`STORE_OWNER_ADDRESS: ${STORE_OWNER_ADDRESS?.toBase58()}`);
+  console.log(`STORE_OWNER_ADDRESS: ${STORE_OWNER_ADDRESS}`);
   if (!STORE_OWNER_ADDRESS) {
-    return undefined;
+    return DEFAULT_STORE;
   }
 
-  const programs = await PublicKey.findProgramAddress(
-    [
-      Buffer.from('metaplex'),
-      METAPLEX_ID.toBuffer(),
-      STORE_OWNER_ADDRESS.toBuffer(),
-    ],
-    METAPLEX_ID,
-  );
-  const CUSTOM = programs[0];
-  console.log(`CUSTOM STORE: ${CUSTOM.toBase58()}`);
+  if (!STORE) {
+    STORE = (
+      await PublicKey.findProgramAddress(
+        [
+          Buffer.from('metaplex'),
+          METAPLEX_ID.toBuffer(),
+          STORE_OWNER_ADDRESS.toBuffer(),
+        ],
+        METAPLEX_ID,
+      )
+    )[0];
+  }
 
-  return CUSTOM;
+  return STORE;
 };
 
 export const setProgramIds = async (envName: string) => {
@@ -89,12 +91,14 @@ export const setProgramIds = async (envName: string) => {
     return;
   }
 
-  if (!STORE) {
-    STORE = await getStoreID();
-  }
+  STORE = await getStoreID();
 };
 
-let STORE: PublicKey | undefined;
+const DEFAULT_STORE = new PublicKey(
+  '7KwpjEy7KBpZTBErE3niBUNxWGAQTPo9kZzkgEoP6dfR',
+);
+
+let STORE: PublicKey;
 
 export const programIds = () => {
   return {
