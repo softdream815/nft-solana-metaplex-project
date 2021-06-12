@@ -207,7 +207,7 @@ export function MetaProvider({ children = null as any }) {
         auctions: {},
         vaults: {},
         payoutTickets: {},
-        store: undefined,
+        store: {},
         whitelistedCreatorsByCreator: {},
         bidderMetadataByAuctionAndBidder: {},
         bidderPotsByAuctionAndBidder: {},
@@ -295,9 +295,7 @@ export function MetaProvider({ children = null as any }) {
       setAuctionManagersByAuction(tempCache.auctionManagersByAuction);
       setBidRedemptions(tempCache.bidRedemptions);
       setPayoutTickets(tempCache.payoutTickets);
-      if (tempCache.store) {
-        setStore(tempCache.store as any);
-      }
+      setStore(tempCache.store as any);
       setWhitelistedCreatorsByCreator(tempCache.whitelistedCreatorsByCreator);
       setIsLoading(false);
 
@@ -442,14 +440,11 @@ export function MetaProvider({ children = null as any }) {
     updateMints,
   ]);
 
-
-
   const filteredMetadata = useMemo(
     () =>
       metadata.filter(m =>
         m?.info?.data?.creators?.find(
           c =>
-            // c.address.toBase58() !== 'CduMjFZLBeg3A9wMP3hQCoU1RQzzCpgSvQNXfCi1GCSB' &&
             c.verified &&
             store &&
             store.info &&
@@ -650,7 +645,7 @@ const processMetaplexAccounts = async (
   if (a.account.owner.toBase58() != programIds().metaplex.toBase58()) return;
 
   try {
-    const STORE_ID = programIds().store?.toBase58() || '';
+    const STORE_ID = programIds().store.toBase58();
 
     if (
       a.account.data[0] === MetaplexKey.AuctionManagerV1 ||
@@ -697,6 +692,7 @@ const processMetaplexAccounts = async (
       }));
     } else if (a.account.data[0] === MetaplexKey.StoreV1) {
       const store = decodeStore(a.account.data);
+      console.log('Found store', store);
       const account: ParsedAccount<Store> = {
         pubkey: a.pubkey,
         account: a.account,
@@ -711,8 +707,7 @@ const processMetaplexAccounts = async (
         whitelistedCreator.address,
       );
       if (
-        creatorKeyIfCreatorWasPartOfThisStore.toBase58() === a.pubkey.toBase58()
-        && whitelistedCreator.address.toBase58() !== 'CduMjFZLBeg3A9wMP3hQCoU1RQzzCpgSvQNXfCi1GCSB'
+        creatorKeyIfCreatorWasPartOfThisStore.toBase58() == a.pubkey.toBase58()
       ) {
         const account = cache.add(
           a.pubkey,

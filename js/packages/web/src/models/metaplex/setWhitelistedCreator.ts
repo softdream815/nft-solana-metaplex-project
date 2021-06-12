@@ -16,10 +16,6 @@ export async function setWhitelistedCreator(
   instructions: TransactionInstruction[],
 ) {
   const PROGRAM_IDS = programIds();
-  const store = PROGRAM_IDS.store;
-  if (!store) {
-    throw new Error('Store not initialized');
-  }
 
   const whitelistedCreatorPDAKey = await getWhitelistedCreator(creator);
 
@@ -48,7 +44,7 @@ export async function setWhitelistedCreator(
       isWritable: false,
     },
     {
-      pubkey: store,
+      pubkey: PROGRAM_IDS.store,
       isSigner: false,
       isWritable: false,
     },

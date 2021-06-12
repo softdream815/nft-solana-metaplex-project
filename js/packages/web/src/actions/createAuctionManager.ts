@@ -308,7 +308,7 @@ export async function createAuctionManager(
     instructions = instructions.slice(stopPoint, instructions.length);
     filteredSigners = filteredSigners.slice(stopPoint, filteredSigners.length);
 
-    if (instructions.length === lastInstructionsLength) tries = tries + 1;
+    if (instructions.length == lastInstructionsLength) tries = tries + 1;
     else tries = 0;
 
     try {
@@ -438,11 +438,6 @@ async function setupAuctionManagerInstructions(
   signers: Keypair[];
   auctionManager: PublicKey;
 }> {
-  let store = programIds().store;
-  if (!store) {
-    throw new Error('Store not initialized');
-  }
-
   let signers: Keypair[] = [];
   let instructions: TransactionInstruction[] = [];
 
@@ -462,7 +457,7 @@ async function setupAuctionManagerInstructions(
     wallet.publicKey,
     wallet.publicKey,
     acceptPayment,
-    store,
+    programIds().store,
     settings,
     instructions,
   );
@@ -497,11 +492,6 @@ async function validateParticipationHelper(
   participationSafetyDepositDraft: SafetyDepositDraft,
   accountRentExempt: number,
 ): Promise<{ instructions: TransactionInstruction[]; signers: Keypair[] }> {
-  const store = programIds().store;
-  if (!store) {
-    throw new Error('Store not initialized');
-  }
-
   let instructions: TransactionInstruction[] = [];
   let signers: Keypair[] = [];
   const whitelistedCreator = participationSafetyDepositDraft.metadata.info.data
@@ -531,7 +521,7 @@ async function validateParticipationHelper(
       printingTokenHoldingAccount,
       wallet.publicKey,
       whitelistedCreator,
-      store,
+      programIds().store,
       await getSafetyDepositBoxAddress(
         vault,
         participationSafetyDepositDraft.masterEdition.info
@@ -578,11 +568,6 @@ async function validateBoxes(
   instructions: TransactionInstruction[][];
   signers: Keypair[][];
 }> {
-  const store = programIds().store;
-  if (!store) {
-    throw new Error('Store not initialized');
-  }
-
   let signers: Keypair[][] = [];
   let instructions: TransactionInstruction[][] = [];
 
@@ -643,7 +628,7 @@ async function validateBoxes(
         tokenInstructions,
         edition,
         whitelistedCreator,
-        store,
+        programIds().store,
         safetyDeposits[i].draft.masterEdition?.info.printingMint,
         safetyDeposits[i].draft.masterEdition ? wallet.publicKey : undefined,
       );

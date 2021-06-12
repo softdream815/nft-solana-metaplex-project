@@ -49,9 +49,9 @@ export const ArtView = () => {
               category={art.category}
               extension={art.image}
               uri={art.image}
-              style={{ width: 300 }}
-              height={300}
-              width={300}
+              style={{ width: 500 }}
+              height={500}
+              width={500}
               className="artwork-image"
               files={art.files}
               active={true}
@@ -67,9 +67,7 @@ export const ArtView = () => {
             <br />
             <div className="info-header">CREATED BY</div>
             <div className="creators">
-              {(art.creators || [])
-                .filter(creator => creator.address !== 'CduMjFZLBeg3A9wMP3hQCoU1RQzzCpgSvQNXfCi1GCSB')
-                .map(creator => {
+              {(art.creators || []).map(creator => {
                 return (
                   <div
                     className="info-content"
