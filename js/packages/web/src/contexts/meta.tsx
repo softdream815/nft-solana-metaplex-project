@@ -115,6 +115,7 @@ const MetaContext = React.createContext<MetaContextState>({
 
 export function MetaProvider({ children = null as any }) {
   const connection = useConnection();
+  const { wallet } = useWallet();
   const { env } = useConnectionConfig();
 
   const [metadata, setMetadata] = useState<ParsedAccount<Metadata>[]>([]);
@@ -229,6 +230,7 @@ export function MetaProvider({ children = null as any }) {
 
         processAuctions(
           accounts[i],
+          wallet,
           (cb: any) => (tempCache.auctions = cb(tempCache.auctions)),
           (cb: any) =>
             (tempCache.bidderMetadataByAuctionAndBidder = cb(
@@ -330,6 +332,7 @@ export function MetaProvider({ children = null as any }) {
     setWhitelistedCreatorsByCreator,
     updateMints,
     env,
+    wallet,
   ]);
 
   useEffect(() => {
@@ -411,6 +414,7 @@ export function MetaProvider({ children = null as any }) {
             pubkey,
             account: info.accountInfo,
           },
+          wallet,
           setAuctions,
           setBidderMetadataByAuctionAndBidder,
           setBidderPotsByAuctionAndBidder,
@@ -580,6 +584,7 @@ function isValidHttpUrl(text: string) {
 
 const processAuctions = (
   a: PublicKeyAndAccount<Buffer>,
+  wallet: any,
   setAuctions: any,
   setBidderMetadataByAuctionAndBidder: any,
   setBidderPotsByAuctionAndBidder: any,
