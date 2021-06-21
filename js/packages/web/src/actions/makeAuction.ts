@@ -1,11 +1,5 @@
 import { Keypair, PublicKey, TransactionInstruction } from '@solana/web3.js';
-import {
-  utils,
-  actions,
-  WinnerLimit,
-  PriceFloor,
-  findProgramAddress,
-} from '@oyster/common';
+import { utils, actions, WinnerLimit, PriceFloor } from '@oyster/common';
 
 import BN from 'bn.js';
 import { METAPLEX_PREFIX } from '../models/metaplex';
@@ -30,7 +24,7 @@ export async function makeAuction(
   let signers: Keypair[] = [];
   let instructions: TransactionInstruction[] = [];
   const auctionKey: PublicKey = (
-    await findProgramAddress(
+    await PublicKey.findProgramAddress(
       [
         Buffer.from(AUCTION_PREFIX),
         PROGRAM_IDS.auction.toBuffer(),
@@ -41,7 +35,7 @@ export async function makeAuction(
   )[0];
 
   const auctionManagerKey: PublicKey = (
-    await findProgramAddress(
+    await PublicKey.findProgramAddress(
       [Buffer.from(METAPLEX_PREFIX), auctionKey.toBuffer()],
       PROGRAM_IDS.metaplex,
     )

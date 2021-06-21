@@ -12,7 +12,6 @@ import {
   BidderPot,
   createAssociatedTokenAccountInstruction,
   programIds,
-  findProgramAddress,
   AuctionState,
   TokenAccount,
 } from '@oyster/common';
@@ -98,7 +97,7 @@ async function emptyPaymentAccountForAllTokens(
         ?.map(c => c.address)
         .find(
           c =>
-            c.toBase58() ===
+            c.toBase58() ==
             auctionView.auctionManager.info.authority.toBase58(),
         );
 
@@ -109,7 +108,7 @@ async function emptyPaymentAccountForAllTokens(
 
       for (let k = 0; k < addresses.length; k++) {
         const ata = (
-          await findProgramAddress(
+          await PublicKey.findProgramAddress(
             [
               addresses[k].toBuffer(),
               PROGRAM_IDS.token.toBuffer(),

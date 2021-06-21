@@ -27,6 +27,8 @@ import {
   Vault,
   setProgramIds,
   useConnectionConfig,
+  walletAdapters,
+  AuctionState,
   useWallet,
 } from '@oyster/common';
 import { MintInfo } from '@solana/spl-token';
@@ -57,8 +59,10 @@ import {
 } from '../models/metaplex';
 import names from './../config/userNames.json';
 
-interface MetaState {
+const { MetadataKey } = actions;
+export interface MetaContextState {
   metadata: ParsedAccount<Metadata>[];
+  unfilteredMetadata: ParsedAccount<Metadata>[];
   metadataByMint: Record<string, ParsedAccount<Metadata>>;
   metadataByMasterEdition: Record<string, ParsedAccount<Metadata>>;
   editions: Record<string, ParsedAccount<Edition>>;
@@ -67,6 +71,7 @@ interface MetaState {
   masterEditionsByOneTimeAuthMint: Record<string, ParsedAccount<MasterEdition>>;
   auctionManagersByAuction: Record<string, ParsedAccount<AuctionManager>>;
   auctions: Record<string, ParsedAccount<AuctionData>>;
+  isLoading: boolean;
   vaults: Record<string, ParsedAccount<Vault>>;
   store: ParsedAccount<Store> | null;
   bidderMetadataByAuctionAndBidder: Record<
@@ -86,34 +91,9 @@ interface MetaState {
   payoutTickets: Record<string, ParsedAccount<PayoutTicket>>;
 }
 
-const { MetadataKey } = actions;
-
-type UpdateStateValueFunc = (prop: keyof MetaState, key: string, value: any) => void;
-export interface MetaContextState extends MetaState {
-  isLoading: boolean;
-}
-
-const isMetadataPartOfStore = (m: ParsedAccount<Metadata> , store: ParsedAccount<Store> | null, whitelistedCreatorsByCreator: Record<
-  string,
-  ParsedAccount<WhitelistedCreator>
->) => {
-  if(!m?.info?.data?.creators) {
-    return false;
-  }
-
-  return m.info.data.creators.findIndex(
-      c =>
-        c.verified &&
-        store &&
-        store.info &&
-        (store.info.public ||
-          whitelistedCreatorsByCreator[c.address.toBase58()]?.info
-            ?.activated),
-    ) >= 0;
-}
-
 const MetaContext = React.createContext<MetaContextState>({
   metadata: [],
+  unfilteredMetadata: [],
   metadataByMint: {},
   masterEditions: {},
   masterEditionsByPrintingMint: {},
@@ -135,50 +115,79 @@ const MetaContext = React.createContext<MetaContextState>({
 
 export function MetaProvider({ children = null as any }) {
   const connection = useConnection();
+  const { wallet } = useWallet();
+  const walletPublicKey = wallet?.publicKey?.toBase58() || '';
   const { env } = useConnectionConfig();
 
-  const [state, setState] = useState<MetaState>({
-    metadata: [] as Array<ParsedAccount<Metadata>>,
-    metadataByMint: {} as Record<string, ParsedAccount<Metadata>>,
-    masterEditions: {} as Record<string, ParsedAccount<MasterEdition>>,
-    masterEditionsByPrintingMint: {} as Record<string, ParsedAccount<MasterEdition>>,
-    masterEditionsByOneTimeAuthMint: {} as Record<string, ParsedAccount<MasterEdition>>,
-    metadataByMasterEdition: {} as any,
-    editions: {},
-    auctionManagersByAuction: {},
-    bidRedemptions: {},
-    auctions: {},
-    vaults: {},
-    payoutTickets: {},
-    store: null as ParsedAccount<Store> | null,
-    whitelistedCreatorsByCreator: {},
-    bidderMetadataByAuctionAndBidder: {},
-    bidderPotsByAuctionAndBidder: {},
-    safetyDepositBoxesByVaultAndIndex: {},
-  })
+  const [metadata, setMetadata] = useState<ParsedAccount<Metadata>[]>([]);
+  const [metadataByMint, setMetadataByMint] = useState<
+    Record<string, ParsedAccount<Metadata>>
+  >({});
+  const [masterEditions, setMasterEditions] = useState<
+    Record<string, ParsedAccount<MasterEdition>>
+  >({});
 
+  const [masterEditionsByPrintingMint, setmasterEditionsByPrintingMint] =
+    useState<Record<string, ParsedAccount<MasterEdition>>>({});
+
+  const [masterEditionsByOneTimeAuthMint, setMasterEditionsByOneTimeAuthMint] =
+    useState<Record<string, ParsedAccount<MasterEdition>>>({});
+
+  const [metadataByMasterEdition, setMetadataByMasterEdition] = useState<
+    Record<string, ParsedAccount<Metadata>>
+  >({});
+
+  const [editions, setEditions] = useState<
+    Record<string, ParsedAccount<Edition>>
+  >({});
+  const [auctionManagersByAuction, setAuctionManagersByAuction] = useState<
+    Record<string, ParsedAccount<AuctionManager>>
+  >({});
+
+  const [bidRedemptions, setBidRedemptions] = useState<
+    Record<string, ParsedAccount<BidRedemptionTicket>>
+  >({});
+  const [auctions, setAuctions] = useState<
+    Record<string, ParsedAccount<AuctionData>>
+  >({});
   const [isLoading, setIsLoading] = useState(true);
+  const [vaults, setVaults] = useState<Record<string, ParsedAccount<Vault>>>(
+    {},
+  );
+  const [payoutTickets, setPayoutTickets] = useState<
+    Record<string, ParsedAccount<PayoutTicket>>
+  >({});
+  const [store, setStore] = useState<ParsedAccount<Store> | null>(null);
+  const [whitelistedCreatorsByCreator, setWhitelistedCreatorsByCreator] =
+    useState<Record<string, ParsedAccount<WhitelistedCreator>>>({});
+
+  const [
+    bidderMetadataByAuctionAndBidder,
+    setBidderMetadataByAuctionAndBidder,
+  ] = useState<Record<string, ParsedAccount<BidderMetadata>>>({});
+  const [bidderPotsByAuctionAndBidder, setBidderPotsByAuctionAndBidder] =
+    useState<Record<string, ParsedAccount<BidderPot>>>({});
+  const [
+    safetyDepositBoxesByVaultAndIndex,
+    setSafetyDepositBoxesByVaultAndIndex,
+  ] = useState<Record<string, ParsedAccount<SafetyDepositBox>>>({});
 
   const updateMints = useCallback(
     async metadataByMint => {
       try {
         const m = await queryExtendedMetadata(connection, metadataByMint);
-        setState((current) => ({
-          ...current,
-          metadata: m.metadata,
-          metadataByMint: m.mintToMetadata,
-        }))
+        setMetadata(m.metadata);
+        setMetadataByMint(m.mintToMetadata);
       } catch (er) {
         console.error(er);
       }
     },
-    [setState],
+    [setMetadata, setMetadataByMint],
   );
 
   useEffect(() => {
     let dispose = () => {};
     (async () => {
-      console.log('-----> Query started');
       const accounts = (
         await Promise.all([
           connection.getProgramAccounts(programIds().vault),
@@ -190,10 +199,8 @@ export function MetaProvider({ children = null as any }) {
 
       await setProgramIds(env);
 
-      console.log('------->Query finished');
-
-      const tempCache: MetaState = {
-        metadata: [],
+      const tempCache = {
+        metadata: {},
         metadataByMint: {},
         masterEditions: {},
         masterEditionsByPrintingMint: {},
@@ -205,53 +212,100 @@ export function MetaProvider({ children = null as any }) {
         auctions: {},
         vaults: {},
         payoutTickets: {},
-        store: null,
+        store: undefined,
         whitelistedCreatorsByCreator: {},
         bidderMetadataByAuctionAndBidder: {},
         bidderPotsByAuctionAndBidder: {},
         safetyDepositBoxesByVaultAndIndex: {},
       };
 
-      const updateTemp = (prop: keyof MetaState, key: string, value: any) => {
-        if (prop === 'store') {
-          tempCache[prop] = value;
-        } else if(tempCache[prop]) {
-          const bucket = tempCache[prop] as any;
-          bucket[key] = value as any;
-        }
-      }
-
       for (let i = 0; i < accounts.length; i++) {
-        let account = accounts[i];
-        processVaultData(account, updateTemp);
-        processAuctions(account, updateTemp);
-        processMetaData(account, updateTemp);
+        processVaultData(
+          accounts[i],
+          (cb: any) =>
+            (tempCache.safetyDepositBoxesByVaultAndIndex = cb(
+              tempCache.safetyDepositBoxesByVaultAndIndex,
+            )),
+          (cb: any) => (tempCache.vaults = cb(tempCache.vaults)),
+        );
+
+        processAuctions(
+          accounts[i],
+          (cb: any) => (tempCache.auctions = cb(tempCache.auctions)),
+          (cb: any) =>
+            (tempCache.bidderMetadataByAuctionAndBidder = cb(
+              tempCache.bidderMetadataByAuctionAndBidder,
+            )),
+          (cb: any) =>
+            (tempCache.bidderPotsByAuctionAndBidder = cb(
+              tempCache.bidderPotsByAuctionAndBidder,
+            )),
+        );
+
+        await processMetaData(
+          accounts[i],
+          (cb: any) =>
+            (tempCache.metadataByMint = cb(tempCache.metadataByMint)),
+          (cb: any) =>
+            (tempCache.metadataByMasterEdition = cb(
+              tempCache.metadataByMasterEdition,
+            )),
+          (cb: any) => (tempCache.editions = cb(tempCache.editions)),
+          (cb: any) =>
+            (tempCache.masterEditions = cb(tempCache.masterEditions)),
+          (cb: any) =>
+            (tempCache.masterEditionsByPrintingMint = cb(
+              tempCache.masterEditionsByPrintingMint,
+            )),
+          (cb: any) =>
+            (tempCache.masterEditionsByOneTimeAuthMint = cb(
+              tempCache.masterEditionsByOneTimeAuthMint,
+            )),
+        );
 
         await processMetaplexAccounts(
-          account,
-          updateTemp,
+          accounts[i],
+          (cb: any) =>
+            (tempCache.auctionManagersByAuction = cb(
+              tempCache.auctionManagersByAuction,
+            )),
+          (cb: any) =>
+            (tempCache.bidRedemptions = cb(tempCache.bidRedemptions)),
+          (cb: any) => (tempCache.payoutTickets = cb(tempCache.payoutTickets)),
+          (obj: any) => (tempCache.store = obj),
+          (cb: any) =>
+            (tempCache.whitelistedCreatorsByCreator = cb(
+              tempCache.whitelistedCreatorsByCreator,
+            )),
+          walletPublicKey,
         );
       }
 
-      const values = Object.values(tempCache.metadataByMint) as ParsedAccount<Metadata>[];
-      for (let i = 0; i < values.length; i++) {
-        const metadata = values[i];
-        if(isMetadataPartOfStore(metadata, tempCache.store, tempCache.whitelistedCreatorsByCreator)) {
-          await metadata.info.init();
-          tempCache.metadataByMasterEdition[metadata.info?.masterEdition?.toBase58() || ''] = metadata;
-        } else {
-          delete tempCache.metadataByMint[metadata.info.mint.toBase58() || ''];
-        }
+      setSafetyDepositBoxesByVaultAndIndex(
+        tempCache.safetyDepositBoxesByVaultAndIndex,
+      );
+      setVaults(tempCache.vaults);
+      setAuctions(tempCache.auctions);
+      setBidderMetadataByAuctionAndBidder(
+        tempCache.bidderMetadataByAuctionAndBidder,
+      );
+      setBidderPotsByAuctionAndBidder(tempCache.bidderPotsByAuctionAndBidder);
+      setMetadataByMint(tempCache.metadataByMint);
+      setMetadataByMasterEdition(tempCache.metadataByMasterEdition);
+      setEditions(tempCache.editions);
+      setMasterEditions(tempCache.masterEditions);
+      setmasterEditionsByPrintingMint(tempCache.masterEditionsByPrintingMint);
+      setMasterEditionsByOneTimeAuthMint(
+        tempCache.masterEditionsByOneTimeAuthMint,
+      );
+      setAuctionManagersByAuction(tempCache.auctionManagersByAuction);
+      setBidRedemptions(tempCache.bidRedemptions);
+      setPayoutTickets(tempCache.payoutTickets);
+      if (tempCache.store) {
+        setStore(tempCache.store as any);
       }
-
-      console.log('------->init finished');
-      tempCache.metadata = values;
-      setState({
-        ...tempCache,
-      })
-
+      setWhitelistedCreatorsByCreator(tempCache.whitelistedCreatorsByCreator);
       setIsLoading(false);
-      console.log('------->set finished');
 
       updateMints(tempCache.metadataByMint);
     })();
@@ -261,37 +315,28 @@ export function MetaProvider({ children = null as any }) {
     };
   }, [
     connection,
-    setState,
+    setSafetyDepositBoxesByVaultAndIndex,
+    setVaults,
+    setAuctions,
+    setBidderMetadataByAuctionAndBidder,
+    setBidderPotsByAuctionAndBidder,
+    setMetadataByMint,
+    setMetadataByMasterEdition,
+    setEditions,
+    setMasterEditions,
+    setmasterEditionsByPrintingMint,
+    setMasterEditionsByOneTimeAuthMint,
+    setAuctionManagersByAuction,
+    setBidRedemptions,
+    setPayoutTickets,
+    setStore,
+    setWhitelistedCreatorsByCreator,
     updateMints,
     env,
+    walletPublicKey,
   ]);
 
-  const updateStateValue = useMemo(() => (prop: keyof MetaState, key: string, value: any) => {
-    setState((current) => {
-      if (prop === 'store') {
-        return {
-          ...current,
-          [prop]: value,
-        }
-      } else {
-        return ({
-          ...current,
-          [prop]: {
-            ...current[prop],
-            [key]: value
-          }
-        });
-      }
-  });
-  }, [setState]);
-
-  const store = state.store;
-  const whitelistedCreatorsByCreator = state.whitelistedCreatorsByCreator;
   useEffect(() => {
-    if(isLoading) {
-      return;
-    }
-
     let vaultSubId = connection.onProgramAccountChange(
       programIds().vault,
       async info => {
@@ -299,12 +344,13 @@ export function MetaProvider({ children = null as any }) {
           typeof info.accountId === 'string'
             ? new PublicKey(info.accountId as unknown as string)
             : info.accountId;
-        processVaultData(
+        await processVaultData(
           {
             pubkey,
             account: info.accountInfo,
           },
-          updateStateValue,
+          setSafetyDepositBoxesByVaultAndIndex,
+          setVaults,
         );
       },
     );
@@ -321,7 +367,12 @@ export function MetaProvider({ children = null as any }) {
             pubkey,
             account: info.accountInfo,
           },
-          updateStateValue,
+          setAuctionManagersByAuction,
+          setBidRedemptions,
+          setPayoutTickets,
+          setStore,
+          setWhitelistedCreatorsByCreator,
+          walletPublicKey,
         );
       },
     );
@@ -333,24 +384,23 @@ export function MetaProvider({ children = null as any }) {
           typeof info.accountId === 'string'
             ? new PublicKey(info.accountId as unknown as string)
             : info.accountId;
-        const result = processMetaData(
+        await processMetaData(
           {
             pubkey,
             account: info.accountInfo,
           },
-          updateStateValue,
+          setMetadataByMint,
+          setMetadataByMasterEdition,
+          setEditions,
+          setMasterEditions,
+          setmasterEditionsByPrintingMint,
+          setMasterEditionsByOneTimeAuthMint,
         );
 
-        if(result && isMetadataPartOfStore(result, store, whitelistedCreatorsByCreator)) {
-          await result.info.init();
-          updateStateValue('metadataByMasterEdition', result.info.masterEdition?.toBase58() || '', result);
-        }
-
-        // TODO: BL
-        // setMetadataByMint(latest => {
-        //   updateMints(latest);
-        //   return latest;
-        // });
+        setMetadataByMint(latest => {
+          updateMints(latest);
+          return latest;
+        });
       },
     );
 
@@ -366,7 +416,9 @@ export function MetaProvider({ children = null as any }) {
             pubkey,
             account: info.accountInfo,
           },
-          updateStateValue
+          setAuctions,
+          setBidderMetadataByAuctionAndBidder,
+          setBidderPotsByAuctionAndBidder,
         );
       },
     );
@@ -379,12 +431,41 @@ export function MetaProvider({ children = null as any }) {
     };
   }, [
     connection,
-    updateStateValue,
+    setSafetyDepositBoxesByVaultAndIndex,
+    setVaults,
+    setAuctions,
+    setBidderMetadataByAuctionAndBidder,
+    setBidderPotsByAuctionAndBidder,
+    setMetadataByMint,
+    setMetadataByMasterEdition,
+    setEditions,
+    setMasterEditions,
+    setmasterEditionsByPrintingMint,
+    setMasterEditionsByOneTimeAuthMint,
+    setAuctionManagersByAuction,
+    setBidRedemptions,
+    setPayoutTickets,
+    setStore,
+    setWhitelistedCreatorsByCreator,
     updateMints,
-    store,
-    whitelistedCreatorsByCreator,
-    isLoading,
+    walletPublicKey,
   ]);
+
+  const filteredMetadata = useMemo(
+    () =>
+      metadata.filter(m =>
+        m?.info?.data?.creators?.find(
+          c =>
+            c.verified &&
+            store &&
+            store.info &&
+            (store.info.public ||
+              whitelistedCreatorsByCreator[c.address.toBase58()]?.info
+                ?.activated),
+        ),
+      ),
+    [metadata, store, whitelistedCreatorsByCreator],
+  );
 
   useEffect(() => {
     // TODO: fetch names dynamically
@@ -420,24 +501,25 @@ export function MetaProvider({ children = null as any }) {
   return (
     <MetaContext.Provider
       value={{
-        metadata: state.metadata,
-        editions: state.editions,
-        masterEditions: state.masterEditions,
-        auctionManagersByAuction: state.auctionManagersByAuction,
-        auctions: state.auctions,
-        metadataByMint: state.metadataByMint,
-        safetyDepositBoxesByVaultAndIndex: state.safetyDepositBoxesByVaultAndIndex,
-        bidderMetadataByAuctionAndBidder: state.bidderMetadataByAuctionAndBidder,
-        bidderPotsByAuctionAndBidder: state.bidderPotsByAuctionAndBidder,
-        vaults: state.vaults,
-        bidRedemptions: state.bidRedemptions,
-        masterEditionsByPrintingMint: state.masterEditionsByPrintingMint,
-        metadataByMasterEdition: state.metadataByMasterEdition,
-        whitelistedCreatorsByCreator: state.whitelistedCreatorsByCreator,
-        store: state.store,
-        payoutTickets: state.payoutTickets,
-        masterEditionsByOneTimeAuthMint: state.masterEditionsByOneTimeAuthMint,
+        metadata: filteredMetadata,
+        unfilteredMetadata: metadata,
+        editions,
+        masterEditions,
+        auctionManagersByAuction,
+        auctions,
+        metadataByMint,
+        safetyDepositBoxesByVaultAndIndex,
+        bidderMetadataByAuctionAndBidder,
+        bidderPotsByAuctionAndBidder,
+        vaults,
+        bidRedemptions,
+        masterEditionsByPrintingMint,
+        metadataByMasterEdition,
+        whitelistedCreatorsByCreator,
+        store,
+        payoutTickets,
         isLoading,
+        masterEditionsByOneTimeAuthMint,
       }}
     >
       {children}
@@ -504,9 +586,11 @@ function isValidHttpUrl(text: string) {
 
 const processAuctions = (
   a: PublicKeyAndAccount<Buffer>,
-  setter: UpdateStateValueFunc,
+  setAuctions: any,
+  setBidderMetadataByAuctionAndBidder: any,
+  setBidderPotsByAuctionAndBidder: any,
 ) => {
-  if (a.account.owner.toBase58() !== programIds().auction.toBase58()) return;
+  if (a.account.owner.toBase58() != programIds().auction.toBase58()) return;
 
   try {
     const account = cache.add(
@@ -515,7 +599,11 @@ const processAuctions = (
       AuctionParser,
       false,
     ) as ParsedAccount<AuctionData>;
-    setter('auctions', a.pubkey.toBase58(), account);
+
+    setAuctions((e: any) => ({
+      ...e,
+      [a.pubkey.toBase58()]: account,
+    }));
   } catch (e) {
     // ignore errors
     // add type as first byte for easier deserialization
@@ -528,12 +616,12 @@ const processAuctions = (
         BidderMetadataParser,
         false,
       ) as ParsedAccount<BidderMetadata>;
-      setter(
-        'bidderMetadataByAuctionAndBidder',
-        account.info.auctionPubkey.toBase58() +
+      setBidderMetadataByAuctionAndBidder((e: any) => ({
+        ...e,
+        [account.info.auctionPubkey.toBase58() +
         '-' +
-        account.info.bidderPubkey.toBase58(),
-        account);
+        account.info.bidderPubkey.toBase58()]: account,
+      }));
     }
   } catch {
     // ignore errors
@@ -547,12 +635,13 @@ const processAuctions = (
         BidderPotParser,
         false,
       ) as ParsedAccount<BidderPot>;
-      setter(
-        'bidderPotsByAuctionAndBidder',
-        account.info.auctionAct.toBase58() +
+
+      setBidderPotsByAuctionAndBidder((e: any) => ({
+        ...e,
+        [account.info.auctionAct.toBase58() +
         '-' +
-        account.info.bidderAct.toBase58(),
-        account);
+        account.info.bidderAct.toBase58()]: account,
+      }));
     }
   } catch {
     // ignore errors
@@ -562,9 +651,14 @@ const processAuctions = (
 
 const processMetaplexAccounts = async (
   a: PublicKeyAndAccount<Buffer>,
-  setter: UpdateStateValueFunc,
+  setAuctionManagersByAuction: any,
+  setBidRedemptions: any,
+  setPayoutTickets: any,
+  setStore: any,
+  setWhitelistedCreatorsByCreator: any,
+  walletPublicKey: string,
 ) => {
-  if (a.account.owner.toBase58() !== programIds().metaplex.toBase58()) return;
+  if (a.account.owner.toBase58() != programIds().metaplex.toBase58()) return;
 
   try {
     const STORE_ID = programIds().store?.toBase58() || '';
@@ -579,14 +673,18 @@ const processMetaplexAccounts = async (
         // Could have any kind of pictures in it.
         if (
           auctionManager.state.status !== AuctionManagerStatus.Initialized ||
-          auctionManager.state.status === AuctionManagerStatus.Initialized)
+          (auctionManager.state.status == AuctionManagerStatus.Initialized &&
+            auctionManager.authority.toBase58() == walletPublicKey)
         ) {
           const account: ParsedAccount<AuctionManager> = {
             pubkey: a.pubkey,
             account: a.account,
             info: auctionManager,
           };
-          setter('auctionManagersByAuction', auctionManager.auction.toBase58(), account);
+          setAuctionManagersByAuction((e: any) => ({
+            ...e,
+            [auctionManager.auction.toBase58()]: account,
+          }));
         }
       }
     } else if (a.account.data[0] === MetaplexKey.BidRedemptionTicketV1) {
@@ -596,7 +694,10 @@ const processMetaplexAccounts = async (
         account: a.account,
         info: ticket,
       };
-      setter('bidRedemptions', a.pubkey.toBase58(), account);
+      setBidRedemptions((e: any) => ({
+        ...e,
+        [a.pubkey.toBase58()]: account,
+      }));
     } else if (a.account.data[0] === MetaplexKey.PayoutTicketV1) {
       const ticket = decodePayoutTicket(a.account.data);
       const account: ParsedAccount<PayoutTicket> = {
@@ -604,7 +705,10 @@ const processMetaplexAccounts = async (
         account: a.account,
         info: ticket,
       };
-      setter('payoutTickets', a.pubkey.toBase58(), account);
+      setPayoutTickets((e: any) => ({
+        ...e,
+        [a.pubkey.toBase58()]: account,
+      }));
     } else if (a.account.data[0] === MetaplexKey.StoreV1) {
       const store = decodeStore(a.account.data);
       const account: ParsedAccount<Store> = {
@@ -613,13 +717,10 @@ const processMetaplexAccounts = async (
         info: store,
       };
       if (a.pubkey.toBase58() === STORE_ID) {
-        setter('store', a.pubkey.toBase58(), account);
+        setStore(account);
       }
     } else if (a.account.data[0] === MetaplexKey.WhitelistedCreatorV1) {
       const whitelistedCreator = decodeWhitelistedCreator(a.account.data);
-
-      // TODO: figure out a way to avoid generating creator addresses during parsing
-      // should we store store id inside creator?
       const creatorKeyIfCreatorWasPartOfThisStore = await getWhitelistedCreator(
         whitelistedCreator.address,
       );
@@ -640,7 +741,11 @@ const processMetaplexAccounts = async (
           account.info.image = nameInfo.image;
           account.info.twitter = nameInfo.twitter;
         }
-        setter('whitelistedCreatorsByCreator', whitelistedCreator.address.toBase58(), account);
+
+        setWhitelistedCreatorsByCreator((e: any) => ({
+          ...e,
+          [whitelistedCreator.address.toBase58()]: account,
+        }));
       }
     }
   } catch {
@@ -649,15 +754,20 @@ const processMetaplexAccounts = async (
   }
 };
 
-const processMetaData = (
+const processMetaData = async (
   meta: PublicKeyAndAccount<Buffer>,
-  setter: UpdateStateValueFunc,
+  setMetadataByMint: any,
+  setMetadataByMasterEdition: any,
+  setEditions: any,
+  setMasterEditions: any,
+  setmasterEditionsByPrintingMint: any,
+  setMasterEditionsByOneTimeAuthMint: any,
 ) => {
-  if (meta.account.owner.toBase58() !== programIds().metadata.toBase58()) return;
+  if (meta.account.owner.toBase58() != programIds().metadata.toBase58()) return;
 
   try {
     if (meta.account.data[0] === MetadataKey.MetadataV1) {
-      const metadata = decodeMetadata(meta.account.data);
+      const metadata = await decodeMetadata(meta.account.data);
 
       if (
         isValidHttpUrl(metadata.data.uri) &&
@@ -668,8 +778,14 @@ const processMetaData = (
           account: meta.account,
           info: metadata,
         };
-        setter('metadataByMint', metadata.mint.toBase58(), account);
-        return account;
+        setMetadataByMint((e: any) => ({
+          ...e,
+          [metadata.mint.toBase58()]: account,
+        }));
+        setMetadataByMasterEdition((e: any) => ({
+          ...e,
+          [metadata.masterEdition?.toBase58() || '']: account,
+        }));
       }
     } else if (meta.account.data[0] === MetadataKey.EditionV1) {
       const edition = decodeEdition(meta.account.data);
@@ -678,7 +794,7 @@ const processMetaData = (
         account: meta.account,
         info: edition,
       };
-      setter('editions', meta.pubkey.toBase58(), account);
+      setEditions((e: any) => ({ ...e, [meta.pubkey.toBase58()]: account }));
     } else if (meta.account.data[0] === MetadataKey.MasterEditionV1) {
       const masterEdition = decodeMasterEdition(meta.account.data);
       const account: ParsedAccount<MasterEdition> = {
@@ -686,9 +802,18 @@ const processMetaData = (
         account: meta.account,
         info: masterEdition,
       };
-      setter('masterEditions', meta.pubkey.toBase58(), account);
-      setter('masterEditionsByPrintingMint', masterEdition.printingMint.toBase58(), account);
-      setter('masterEditionsByOneTimeAuthMint', masterEdition.oneTimePrintingAuthorizationMint.toBase58(), account);
+      setMasterEditions((e: any) => ({
+        ...e,
+        [meta.pubkey.toBase58()]: account,
+      }));
+      setmasterEditionsByPrintingMint((e: any) => ({
+        ...e,
+        [masterEdition.printingMint.toBase58()]: account,
+      }));
+      setMasterEditionsByOneTimeAuthMint((e: any) => ({
+        ...e,
+        [masterEdition.oneTimePrintingAuthorizationMint.toBase58()]: account,
+      }));
     }
   } catch {
     // ignore errors
@@ -698,9 +823,10 @@ const processMetaData = (
 
 const processVaultData = (
   a: PublicKeyAndAccount<Buffer>,
-  setter: UpdateStateValueFunc,
+  setSafetyDepositBoxesByVaultAndIndex: any,
+  setVaults: any,
 ) => {
-  if (a.account.owner.toBase58() !== programIds().vault.toBase58()) return;
+  if (a.account.owner.toBase58() != programIds().vault.toBase58()) return;
   try {
     if (a.account.data[0] === VaultKey.SafetyDepositBoxV1) {
       const safetyDeposit = decodeSafetyDeposit(a.account.data);
@@ -709,10 +835,10 @@ const processVaultData = (
         account: a.account,
         info: safetyDeposit,
       };
-      setter(
-        'safetyDepositBoxesByVaultAndIndex',
-        safetyDeposit.vault.toBase58() + '-' + safetyDeposit.order,
-        account);
+      setSafetyDepositBoxesByVaultAndIndex((e: any) => ({
+        ...e,
+        [safetyDeposit.vault.toBase58() + '-' + safetyDeposit.order]: account,
+      }));
     } else if (a.account.data[0] === VaultKey.VaultV1) {
       const vault = decodeVault(a.account.data);
       const account: ParsedAccount<Vault> = {
@@ -720,11 +846,10 @@ const processVaultData = (
         account: a.account,
         info: vault,
       };
-
-      setter(
-        'vaults',
-        a.pubkey.toBase58(),
-        account);
+      setVaults((e: any) => ({
+        ...e,
+        [a.pubkey.toBase58()]: account,
+      }));
     }
   } catch {
     // ignore errors

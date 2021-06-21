@@ -1,9 +1,4 @@
-import {
-  programIds,
-  VAULT_PREFIX,
-  getAuctionExtended,
-  findProgramAddress,
-} from '@oyster/common';
+import { programIds, VAULT_PREFIX, getAuctionExtended } from '@oyster/common';
 import {
   PublicKey,
   SYSVAR_RENT_PUBKEY,
@@ -36,7 +31,7 @@ export async function populateParticipationPrintingAccount(
   }
 
   const transferAuthority: PublicKey = (
-    await findProgramAddress(
+    await PublicKey.findProgramAddress(
       [
         Buffer.from(VAULT_PREFIX),
         PROGRAM_IDS.vault.toBuffer(),

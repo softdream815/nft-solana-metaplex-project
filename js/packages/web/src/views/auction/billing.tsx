@@ -11,6 +11,7 @@ import {
 import { ArtContent } from '../../components/ArtContent';
 import {
   useConnection,
+  useUserAccounts,
   contexts,
   BidderMetadata,
   ParsedAccount,
@@ -18,6 +19,7 @@ import {
   BidderPot,
   fromLamports,
   useMint,
+  shortenAddress,
   getBidderPotKey,
   programIds,
   Bid,

@@ -14,7 +14,6 @@ import {
   VaultState,
   sendTransactionsWithManualRetry,
   decodeExternalPriceAccount,
-  findProgramAddress,
 } from '@oyster/common';
 
 import BN from 'bn.js';
@@ -40,7 +39,7 @@ export async function unwindVault(
   let currSigners: Keypair[] = [];
   let currInstructions: TransactionInstruction[] = [];
 
-  if (vault.info.state === VaultState.Inactive) {
+  if (vault.info.state == VaultState.Inactive) {
     console.log('Vault is inactive, combining');
     const epa = await connection.getAccountInfo(
       vault.info.pricingLookupAddress,
@@ -83,7 +82,7 @@ export async function unwindVault(
   for (let i = 0; i < boxes.length; i++) {
     let nft = boxes[i];
     const ata = (
-      await findProgramAddress(
+      await PublicKey.findProgramAddress(
         [
           wallet.publicKey.toBuffer(),
           PROGRAM_IDS.token.toBuffer(),

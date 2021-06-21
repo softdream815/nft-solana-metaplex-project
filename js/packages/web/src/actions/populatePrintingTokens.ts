@@ -8,7 +8,6 @@ import {
   utils,
   createAssociatedTokenAccountInstruction,
   mintPrintingTokens,
-  findProgramAddress,
 } from '@oyster/common';
 
 import BN from 'bn.js';
@@ -44,7 +43,7 @@ export async function populatePrintingTokens(
       !nft.tokenAccount
     ) {
       const holdingKey: PublicKey = (
-        await findProgramAddress(
+        await PublicKey.findProgramAddress(
           [
             wallet.publicKey.toBuffer(),
             PROGRAM_IDS.token.toBuffer(),

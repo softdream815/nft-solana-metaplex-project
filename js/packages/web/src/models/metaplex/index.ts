@@ -3,7 +3,6 @@ import {
   programIds,
   METADATA,
   AccountParser,
-  findProgramAddress,
 } from '@oyster/common';
 import { AccountInfo, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
@@ -649,7 +648,7 @@ export async function getAuctionManagerKey(
   const PROGRAM_IDS = programIds();
 
   return (
-    await findProgramAddress(
+    await PublicKey.findProgramAddress(
       [Buffer.from(METAPLEX_PREFIX), auctionKey.toBuffer()],
       PROGRAM_IDS.metaplex,
     )
@@ -662,7 +661,7 @@ export async function getAuctionKeys(
   const PROGRAM_IDS = programIds();
 
   const auctionKey: PublicKey = (
-    await findProgramAddress(
+    await PublicKey.findProgramAddress(
       [
         Buffer.from(AUCTION_PREFIX),
         PROGRAM_IDS.auction.toBuffer(),
@@ -684,7 +683,7 @@ export async function getBidderKeys(
   const PROGRAM_IDS = programIds();
 
   const bidMetadata: PublicKey = (
-    await findProgramAddress(
+    await PublicKey.findProgramAddress(
       [
         Buffer.from(AUCTION_PREFIX),
         PROGRAM_IDS.auction.toBuffer(),
@@ -697,7 +696,7 @@ export async function getBidderKeys(
   )[0];
 
   const bidRedemption: PublicKey = (
-    await findProgramAddress(
+    await PublicKey.findProgramAddress(
       [
         Buffer.from(METAPLEX_PREFIX),
         auctionKey.toBuffer(),
@@ -717,7 +716,7 @@ export async function getOriginalAuthority(
   const PROGRAM_IDS = programIds();
 
   return (
-    await findProgramAddress(
+    await PublicKey.findProgramAddress(
       [
         Buffer.from(METAPLEX_PREFIX),
         auctionKey.toBuffer(),
@@ -736,7 +735,7 @@ export async function getWhitelistedCreator(creator: PublicKey) {
   }
 
   return (
-    await findProgramAddress(
+    await PublicKey.findProgramAddress(
       [
         Buffer.from(METAPLEX_PREFIX),
         PROGRAM_IDS.metaplex.toBuffer(),
@@ -754,7 +753,7 @@ export async function getSafetyDepositBoxValidationTicket(
 ) {
   const PROGRAM_IDS = programIds();
   return (
-    await findProgramAddress(
+    await PublicKey.findProgramAddress(
       [
         Buffer.from(METAPLEX_PREFIX),
         PROGRAM_IDS.metaplex.toBuffer(),
@@ -777,7 +776,7 @@ export async function getPayoutTicket(
   const PROGRAM_IDS = programIds();
 
   return (
-    await findProgramAddress(
+    await PublicKey.findProgramAddress(
       [
         Buffer.from(METAPLEX_PREFIX),
         auctionManager.toBuffer(),

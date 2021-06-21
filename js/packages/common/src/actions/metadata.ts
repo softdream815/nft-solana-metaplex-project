@@ -7,7 +7,6 @@ import {
 import { programIds, PROGRAM_IDS } from '../utils/ids';
 import { deserializeUnchecked, serialize } from 'borsh';
 import BN from 'bn.js';
-import { findProgramAddress } from '../utils';
 export const METADATA_PREFIX = 'metadata';
 export const EDITION = 'edition';
 export const RESERVATION = 'reservation';
@@ -204,11 +203,8 @@ export class Metadata {
   isMutable: boolean;
 
   extended?: IMetadataExtension;
-
-  // set lazy
   masterEdition?: PublicKey;
   edition?: PublicKey;
-
   constructor(args: {
     updateAuthority: PublicKey;
     mint: PublicKey;
@@ -222,12 +218,6 @@ export class Metadata {
     this.data = args.data;
     this.primarySaleHappened = args.primarySaleHappened;
     this.isMutable = args.isMutable;
-  }
-
-  public async init() {
-    const edition = await getEdition(this.mint);
-    this.edition = edition;
-    this.masterEdition = edition;
   }
 }
 
@@ -409,12 +399,14 @@ export const METADATA_SCHEMA = new Map<any, any>([
   ],
 ]);
 
-export const decodeMetadata = (buffer: Buffer): Metadata => {
+export const decodeMetadata = async (buffer: Buffer): Promise<Metadata> => {
   const metadata = deserializeUnchecked(
     METADATA_SCHEMA,
     Metadata,
     buffer,
   ) as Metadata;
+  metadata.edition = await getEdition(metadata.mint);
+  metadata.masterEdition = await getEdition(metadata.mint);
   return metadata;
 };
 
@@ -444,7 +436,7 @@ export async function updateMetadata(
   metadataAccount =
     metadataAccount ||
     (
-      await findProgramAddress(
+      await PublicKey.findProgramAddress(
         [
           Buffer.from('metadata'),
           metadataProgramId.toBuffer(),
@@ -497,7 +489,7 @@ export async function createMetadata(
   const metadataProgramId = programIds().metadata;
 
   const metadataAccount = (
-    await findProgramAddress(
+    await PublicKey.findProgramAddress(
       [
         Buffer.from('metadata'),
         metadataProgramId.toBuffer(),
@@ -573,7 +565,7 @@ export async function createMasterEdition(
   const metadataProgramId = programIds().metadata;
 
   const metadataAccount = (
-    await findProgramAddress(
+    await PublicKey.findProgramAddress(
       [
         Buffer.from(METADATA_PREFIX),
         metadataProgramId.toBuffer(),
@@ -584,7 +576,7 @@ export async function createMasterEdition(
   )[0];
 
   const editionAccount = (
-    await findProgramAddress(
+    await PublicKey.findProgramAddress(
       [
         Buffer.from(METADATA_PREFIX),
         metadataProgramId.toBuffer(),
@@ -983,7 +975,7 @@ export async function getEdition(tokenMint: PublicKey): Promise<PublicKey> {
   const PROGRAM_IDS = programIds();
 
   return (
-    await findProgramAddress(
+    await PublicKey.findProgramAddress(
       [
         Buffer.from(METADATA_PREFIX),
         PROGRAM_IDS.metadata.toBuffer(),
@@ -999,7 +991,7 @@ export async function getMetadata(tokenMint: PublicKey): Promise<PublicKey> {
   const PROGRAM_IDS = programIds();
 
   return (
-    await findProgramAddress(
+    await PublicKey.findProgramAddress(
       [
         Buffer.from(METADATA_PREFIX),
         PROGRAM_IDS.metadata.toBuffer(),
@@ -1017,7 +1009,7 @@ export async function getReservationList(
   const PROGRAM_IDS = programIds();
 
   return (
-    await findProgramAddress(
+    await PublicKey.findProgramAddress(
       [
         Buffer.from(METADATA_PREFIX),
         PROGRAM_IDS.metadata.toBuffer(),
