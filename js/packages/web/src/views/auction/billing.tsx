@@ -6,7 +6,6 @@ import {
   useAuction,
   AuctionView,
   useBidsForAuction,
-  useUserBalance,
 } from '../../hooks';
 import { ArtContent } from '../../components/ArtContent';
 import {
@@ -117,6 +116,7 @@ function useWinnerPotsByBidderKey(
         return agg;
       }, {} as Record<string, ParsedAccount<BidderPot>>);
 
+      console.log('Final keys', Object.keys(newPots));
       setPots(newPots);
     })();
   }, [truWinners, setPots]);
@@ -227,13 +227,37 @@ function usePayoutTickets(
   );
 }
 
-export function useBillingInfo({ auctionView }: { auctionView: AuctionView }) {
+export const InnerBillingView = ({
+  auctionView,
+  wallet,
+  connection,
+  mint,
+}: {
+  auctionView: AuctionView;
+  wallet: WalletAdapter;
+  connection: Connection;
+  mint: MintInfo;
+}) => {
   const {
     bidRedemptions,
     bidderMetadataByAuctionAndBidder,
     bidderPotsByAuctionAndBidder,
+    whitelistedCreatorsByCreator,
   } = useMeta();
+  const art = useArt(auctionView.thumbnail.metadata.pubkey);
+  const [escrowBalance, setEscrowBalance] = useState<number | undefined>();
+  const [escrowBalanceRefreshCounter, setEscrowBalanceRefreshCounter] =
+    useState(0);
   const auctionKey = auctionView.auction.pubkey.toBase58();
+
+  useEffect(() => {
+    connection
+      .getTokenAccountBalance(auctionView.auctionManager.info.acceptPayment)
+      .then(resp => {
+        if (resp.value.uiAmount !== undefined && resp.value.uiAmount !== null)
+          setEscrowBalance(resp.value.uiAmount);
+      });
+  }, [escrowBalanceRefreshCounter]);
 
   const [participationBidRedemptionKeys, setParticipationBidRedemptionKeys] =
     useState<Record<string, PublicKey>>({});
@@ -294,6 +318,7 @@ export function useBillingInfo({ auctionView }: { auctionView: AuctionView }) {
     auctionView.auctionManager.info.settings.participationConfig
       ?.nonWinningConstraint;
 
+  const participationEligibleRedeemable: ParsedAccount<BidderMetadata>[] = [];
   const participationEligibleUnredeemable: ParsedAccount<BidderMetadata>[] = [];
 
   participationEligible.forEach(o => {
@@ -352,60 +377,14 @@ export function useBillingInfo({ auctionView }: { auctionView: AuctionView }) {
         ],
       pot,
     })),
+    ...participationEligibleRedeemable.map(metadata => ({
+      metadata,
+      pot: bidderPotsByAuctionAndBidder[
+        `${auctionKey}-${metadata.info.bidderPubkey.toBase58()}`
+      ],
+    })),
   ];
 
-  return {
-    bidsToClaim,
-    totalWinnerPayments,
-    payoutTickets,
-    participationEligible,
-    participationPossibleTotal,
-    participationUnredeemedTotal,
-    hasParticipation,
-  };
-}
-
-export const InnerBillingView = ({
-  auctionView,
-  wallet,
-  connection,
-  mint,
-}: {
-  auctionView: AuctionView;
-  wallet: WalletAdapter;
-  connection: Connection;
-  mint: MintInfo;
-}) => {
-  const art = useArt(auctionView.thumbnail.metadata.pubkey);
-  const balance = useUserBalance(auctionView.auction.info.tokenMint);
-  const [escrowBalance, setEscrowBalance] = useState<number | undefined>();
-  const { whitelistedCreatorsByCreator } = useMeta();
-  const [escrowBalanceRefreshCounter, setEscrowBalanceRefreshCounter] =
-    useState(0);
-
-  useEffect(() => {
-    connection
-      .getTokenAccountBalance(auctionView.auctionManager.info.acceptPayment)
-      .then(resp => {
-        if (resp.value.uiAmount !== undefined && resp.value.uiAmount !== null)
-          setEscrowBalance(resp.value.uiAmount);
-      });
-  }, [escrowBalanceRefreshCounter]);
-
-  const myPayingAccount = balance.accounts[0];
-
-  const { accountByMint } = useUserAccounts();
-
-  const {
-    bidsToClaim,
-    totalWinnerPayments,
-    payoutTickets,
-    participationPossibleTotal,
-    participationUnredeemedTotal,
-    hasParticipation,
-  } = useBillingInfo({
-    auctionView,
-  });
   return (
     <Content>
       <Col>
@@ -497,8 +476,6 @@ export const InnerBillingView = ({
                   wallet,
                   auctionView,
                   bidsToClaim.map(b => b.pot),
-                  myPayingAccount.pubkey,
-                  accountByMint,
                 );
                 setEscrowBalanceRefreshCounter(ctr => ctr + 1);
               }}
