@@ -375,8 +375,7 @@ export const InnerBillingView = ({
   connection: Connection;
   mint: MintInfo;
 }) => {
-  const id = auctionView.thumbnail.metadata.pubkey;
-  const art = useArt(id);
+  const art = useArt(auctionView.thumbnail.metadata.pubkey);
   const balance = useUserBalance(auctionView.auction.info.tokenMint);
   const [escrowBalance, setEscrowBalance] = useState<number | undefined>();
   const { whitelistedCreatorsByCreator } = useMeta();
@@ -415,7 +414,9 @@ export const InnerBillingView = ({
           <Col span={12}>
             <ArtContent
               category={art.category}
-              pubkey={id}
+              uri={art.image}
+              extension={art.image}
+              files={art.files}
               className="artwork-image"
             />
           </Col>

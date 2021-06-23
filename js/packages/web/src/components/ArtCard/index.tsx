@@ -14,6 +14,7 @@ export interface ArtCardProps extends CardProps {
   pubkey?: PublicKey;
   image?: string;
   file?: string;
+  blob?: Blob;
   category?: MetadataCategory;
   name?: string;
   symbol?: string;
@@ -46,12 +47,10 @@ export const ArtCard = (props: ArtCardProps) => {
   } = props;
   const art = useArt(pubkey);
   category = art?.category || category;
+  image = art?.image || image;
   creators = art?.creators || creators || [];
   name = art?.title || name || ' ';
-
-  // TODO: BL
-  // image = art?.image || image;
-  // description = art?.about || description;
+  description = art?.about || description;
 
   let badge = '';
   if (art.type === ArtType.NFT) {
@@ -82,11 +81,10 @@ export const ArtCard = (props: ArtCardProps) => {
             </Button>
           )}
           <ArtContent
-            pubkey={pubkey}
-
-            extension={file || image}
-            uri={image}
             category={category}
+            extension={file || image}
+            files={art.files}
+            uri={image}
             preview={preview}
             height={height}
             width={width}

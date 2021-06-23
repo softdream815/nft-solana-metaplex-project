@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Row, Col, Button, Skeleton, Carousel } from 'antd';
+import { Row, Col, Button, Image, Tooltip, Carousel } from 'antd';
 import { AuctionCard } from '../../components/AuctionCard';
 import {
   AuctionView as Auction,
@@ -39,8 +39,7 @@ export const AuctionItem = ({
   size: number;
   active?: boolean;
 }) => {
-  const id = item.metadata.pubkey;
-  const art = useArt(id);
+  const art = useArt(item.metadata.pubkey);
   const ref = useRef<HTMLDivElement>(null);
   var style: React.CSSProperties = {
     transform:
@@ -53,16 +52,18 @@ export const AuctionItem = ({
     transformOrigin: 'right bottom',
     position: index !== 0 ? 'absolute' : 'static',
     zIndex: -1 * index,
+    border: size > 1 ? '1px solid #282828' : '',
     marginLeft: size > 1 && index === 0 ? '0px' : 'auto',
     background: 'black',
     boxShadow: 'rgb(0 0 0 / 10%) 12px 2px 20px 14px',
-    height: 300,
   };
   return (
     <div ref={ref}>
       <ArtContent
         category={art.category}
-        pubkey={id}
+        uri={art.image}
+        extension={art.image}
+        files={art.files}
         className="artwork-image stack-item"
         style={style}
         ref={ref}
@@ -83,57 +84,44 @@ export const AuctionView = () => {
   const nftCount = auction?.items.flat().length;
   const winnerCount = auction?.items.length;
 
-  // TODO: BL
-  const hasDescription = false; // art === undefined || art.about === undefined
-  const description = ''; // art.about
-
-  const items = [
-    ...(auction?.items
-      .flat()
-      .reduce((agg, item) => {
-        agg.set(item.metadata.pubkey.toBase58(), item);
-        return agg;
-      }, new Map<string, AuctionViewItem>())
-      .values() || []),
-    auction?.participationItem,
-  ].map((item, index, arr) => {
-    if (!item || !item?.metadata || !item.metadata?.pubkey) {
-      return null;
-    }
-
-    return (
-      <AuctionItem
-        key={item.metadata.pubkey.toBase58()}
-        item={item}
-        index={index}
-        size={arr.length}
-        active={index === currentIndex}
-      ></AuctionItem>
-    );
-  });
-
   return (
     <>
       <Row justify="space-around">
         <Col span={24} md={12} className="pr-4">
-          <div className="auction-view" style={{ minHeight: 300 }}>
+          <div className="">
+          <Carousel autoplay={false} afterChange={(index) => setCurrentIndex(index)}>
+              {[
+                ...(auction?.items.flat()
+                  .reduce((agg, item) => {
+                      agg.set(item.metadata.pubkey.toBase58(), item);
+                      return agg;
+                    }, new Map<string, AuctionViewItem>()).values() || []),
+                auction?.participationItem,
+              ].map((item, index, arr) => {
+                if (!item || !item?.metadata || !item.metadata?.pubkey) {
+                  return null;
+                }
 
-            <Carousel
-              autoplay={false}
-              afterChange={index => setCurrentIndex(index)}
-            >
-              {items}
-            </Carousel>
+                return (
+                    <AuctionItem
+                      key={item.metadata.pubkey.toBase58()}
+                      item={item}
+                      index={index}
+                      size={arr.length}
+                      active={index === currentIndex}
+                    ></AuctionItem>
+                );
+              })}
+              </Carousel>
           </div>
           <h6>NUMBER OF WINNERS</h6>
-          <h1>{winnerCount === undefined ?  <Skeleton paragraph={{ rows: 0 }} /> : winnerCount}</h1>
+          <h1>{winnerCount}</h1>
           <h6>NUMBER OF NFTs</h6>
-          <h1>{nftCount === undefined ?  <Skeleton paragraph={{ rows: 0 }} /> : nftCount}</h1>
+          <h1>{nftCount}</h1>
           <h6>About this {nftCount === 1 ? 'NFT' : 'Collection'}</h6>
           <p>
-            {hasDescription && <Skeleton paragraph={{ rows: 3 }} />}
-            {description || (
-              winnerCount !== undefined && <div style={{ fontStyle: 'italic' }}>
+            {art.about || (
+              <div style={{ fontStyle: 'italic' }}>
                 No description provided.
               </div>
             )}
@@ -147,7 +135,9 @@ export const AuctionView = () => {
         </Col>
 
         <Col span={24} md={12}>
-          <h2 className="art-title">{art.title || <Skeleton paragraph={{ rows: 0 }} />}</h2>
+          <h2 className="art-title">
+            {art.title}
+          </h2>
           <Row gutter={[50, 0]} style={{ marginRight: 'unset' }}>
             <Col>
               <h6>Edition</h6>
@@ -180,7 +170,6 @@ export const AuctionView = () => {
             </Col>
           </Row>
 
-          {!auction && <Skeleton paragraph={{ rows: 6 }} />}
           {auction && <AuctionCard auctionView={auction} />}
           <AuctionBids auctionView={auction} />
         </Col>

@@ -12,8 +12,7 @@ interface IPreSaleBanner {
 }
 
 export const PreSaleBanner = ({ auction }: IPreSaleBanner) => {
-  const id = auction?.thumbnail.metadata.pubkey;
-  const art = useArt();
+  const art = useArt(auction?.thumbnail.metadata.pubkey);
 
   if (!auction) {
     return null;
@@ -24,7 +23,9 @@ export const PreSaleBanner = ({ auction }: IPreSaleBanner) => {
       <Col md={12} className="explore">
         <ArtContent
           category={art.category}
-          pubkey={id}
+          uri={art.image}
+          extension={art.image}
+          files={art.files}
           className="artwork-image"
         />
       </Col>
