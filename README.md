@@ -20,15 +20,14 @@ https://www.notion.so/Metaplex-Developer-Guide-afefbc19841744c28587ab948a08cfac
 
 ## Installing
 
-Clone the repo, and run `yarn start` to deploy.
+Clone the repo, and run `deploy-web.sh`.
 
 ```bash
 $ git clone https://github.com/metaplex-foundation/metaplex.git
 $ cd metaplex
 $ cd js
 $ yarn install
-$ yarn bootstrap
-$ yarn start
+$ ./deploy-web.sh
 ```
 
 ## Rust Programs
