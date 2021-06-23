@@ -11,7 +11,6 @@ type MeshViewerProps = {
   gltf?: string;
   style?: React.CSSProperties;
   forcePhongMaterialForVertexColors?: boolean;
-  onError?: () => void;
 };
 
 const phongifyVertexColors = (gltfScene: any) => {
@@ -55,7 +54,7 @@ export class MeshViewer extends React.Component<MeshViewerProps, {}> {
       return;
     }
     // === THREE.JS CODE START ===
-    this.renderer = new THREE.WebGLRenderer({ antialias: true  });
+    this.renderer = new THREE.WebGLRenderer({ antialias: true });
 
     const width = this.threeMountRef.current.clientWidth;
     const height = this.threeMountRef.current.clientHeight;
@@ -152,10 +151,7 @@ export class MeshViewer extends React.Component<MeshViewerProps, {}> {
         this.handleWindowResize();
       },
       undefined,
-      error => {
-        if (this.props.onError) {
-          this.props.onError();
-        }
+      (error) => {
         console.error(error);
       },
     );
