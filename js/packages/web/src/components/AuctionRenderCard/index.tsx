@@ -14,9 +14,8 @@ export interface AuctionCard extends CardProps {
 
 export const AuctionRenderCard = (props: AuctionCard) => {
   let { auctionView } = props;
-  const art = useArt(auctionView.thumbnail.metadata.pubkey);
-  const category = art?.category;
-  const image = art?.image;
+  const id = auctionView.thumbnail.metadata.pubkey;
+  const art = useArt(id);
   const name = art?.title || ' ';
   const [state, setState] = useState<CountdownState>();
   const bids = useBidsForAuction(auctionView.auction.pubkey);
@@ -77,12 +76,12 @@ export const AuctionRenderCard = (props: AuctionCard) => {
       cover={
         <>
           <ArtContent
-            category={category}
             className="auction-image no-events"
-            extension={image}
-            uri={image}
             preview={false}
-            files={art.files}
+
+            pubkey={id}
+
+            allowMeshRender={false}
           />
         </>
       }
