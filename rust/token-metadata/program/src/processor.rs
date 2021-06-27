@@ -70,12 +70,7 @@ pub fn process_instruction(
         }
         MetadataInstruction::SetReservationList(args) => {
             msg!("Instruction: Set Reservation List");
-            process_set_reservation_list(
-                program_id,
-                accounts,
-                args.reservations,
-                args.total_reservation_spots,
-            )
+            process_set_reservation_list(program_id, accounts, args.reservations)
         }
         MetadataInstruction::CreateReservationList => {
             msg!("Instruction: Create Reservation List");
@@ -546,7 +541,6 @@ pub fn process_set_reservation_list(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     reservations: Vec<Reservation>,
-    total_reservation_spots: Option<u64>,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -564,6 +558,10 @@ pub fn process_set_reservation_list(
         return Err(MetadataError::ReservationDoesNotExist.into());
     }
 
+    if reservations.len() > MAX_RESERVATIONS {
+        return Err(MetadataError::BeyondMaxAddressSize.into());
+    }
+
     assert_derivation(
         program_id,
         reservation_list_info,
@@ -578,12 +576,12 @@ pub fn process_set_reservation_list(
 
     let mut reservation_list = get_reservation_list(reservation_list_info)?;
 
-    if reservation_list.supply_snapshot().is_some() && total_reservation_spots.is_some() {
+    if reservation_list.supply_snapshot().is_some() {
         return Err(MetadataError::ReservationAlreadyMade.into());
     }
 
-    let mut total_len: u64 = reservation_list.current_reservation_spots();
-    let mut total_len_check: u64 = reservation_list.current_reservation_spots();
+    let mut total_len: u64 = 0;
+    let mut total_len_check: u64 = 0;
 
     for reservation in &reservations {
         total_len = total_len
@@ -598,39 +596,28 @@ pub fn process_set_reservation_list(
             );
         }
     }
-    reservation_list.set_current_reservation_spots(total_len);
-
-    reservation_list.add_reservations(reservations);
-
-    if let Some(total) = total_reservation_spots {
-        reservation_list.set_supply_snapshot(Some(master_edition.supply));
-        reservation_list.set_total_reservation_spots(total);
-        master_edition.supply = master_edition
-            .supply
-            .checked_add(total as u64)
-            .ok_or(MetadataError::NumericalOverflowError)?;
-
-        if let Some(max_supply) = master_edition.max_supply {
-            if master_edition.supply > max_supply {
-                return Err(MetadataError::ReservationBreachesMaximumSupply.into());
-            }
-        }
-        master_edition.serialize(&mut *master_edition_info.data.borrow_mut())?;
-    }
 
     if total_len_check != total_len {
         return Err(MetadataError::SpotMismatch.into());
     }
 
-    if total_len > reservation_list.total_reservation_spots() {
-        return Err(MetadataError::BeyondAlottedAddressSize.into());
-    };
+    reservation_list.set_supply_snapshot(Some(master_edition.supply));
+    reservation_list.set_reservations(reservations);
+    msg!("Master edition {:?}", master_edition);
+    msg!("Total new spots {:?}", total_len);
+    master_edition.supply = master_edition
+        .supply
+        .checked_add(total_len as u64)
+        .ok_or(MetadataError::NumericalOverflowError)?;
 
-    if reservation_list.reservations().len() > MAX_RESERVATIONS {
-        return Err(MetadataError::BeyondMaxAddressSize.into());
+    if let Some(max_supply) = master_edition.max_supply {
+        if master_edition.supply > max_supply {
+            return Err(MetadataError::ReservationBreachesMaximumSupply.into());
+        }
     }
 
     reservation_list.save(reservation_list_info)?;
+    master_edition.serialize(&mut *master_edition_info.data.borrow_mut())?;
 
     Ok(())
 }
