@@ -27,6 +27,7 @@ import {
   Vault,
   setProgramIds,
   useConnectionConfig,
+  useWallet,
 } from '@oyster/common';
 import { MintInfo } from '@solana/spl-token';
 import { Connection, PublicKey, PublicKeyAndAccount } from '@solana/web3.js';
@@ -342,19 +343,14 @@ export function MetaProvider({ children = null as any }) {
 
         if(result && isMetadataPartOfStore(result, store, whitelistedCreatorsByCreator)) {
           await result.info.init();
-          setState((data) => ({
-            ...data,
-            metadata: [...data.metadata.filter(m => m.pubkey.equals(pubkey)), result],
-            metadataByMasterEdition: {
-              ...data.metadataByMasterEdition,
-              [result.info.masterEdition?.toBase58() || '']: result,
-            },
-            metadataByMint: {
-              ...data.metadataByMint,
-              [result.info.mint.toBase58()]: result
-            }
-          }));
+          updateStateValue('metadataByMasterEdition', result.info.masterEdition?.toBase58() || '', result);
         }
+
+        // TODO: BL
+        // setMetadataByMint(latest => {
+        //   updateMints(latest);
+        //   return latest;
+        // });
       },
     );
 
@@ -384,7 +380,6 @@ export function MetaProvider({ children = null as any }) {
   }, [
     connection,
     updateStateValue,
-    setState,
     updateMints,
     store,
     whitelistedCreatorsByCreator,
@@ -471,7 +466,7 @@ const queryExtendedMetadata = async (
         MintParser,
         false,
       ) as ParsedAccount<MintInfo>;
-      if (!mint.info.supply.eqn(1) || mint.info.decimals !== 0) {
+      if (mint.info.supply.gt(new BN(1)) || mint.info.decimals !== 0) {
         // naive not NFT check
         delete mintToMetadata[key];
       } else {

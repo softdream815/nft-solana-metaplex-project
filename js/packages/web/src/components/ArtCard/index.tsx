@@ -12,12 +12,9 @@ const { Meta } = Card;
 
 export interface ArtCardProps extends CardProps {
   pubkey?: PublicKey;
-
   image?: string;
-  animationURL?: string;
-
+  file?: string;
   category?: MetadataCategory;
-
   name?: string;
   symbol?: string;
   description?: string;
@@ -25,7 +22,7 @@ export interface ArtCardProps extends CardProps {
   preview?: boolean;
   small?: boolean;
   close?: () => void;
-
+  endAuctionAt?: number;
   height?: number;
   width?: number;
 }
@@ -36,7 +33,7 @@ export const ArtCard = (props: ArtCardProps) => {
     small,
     category,
     image,
-    animationURL,
+    file,
     name,
     preview,
     creators,
@@ -82,9 +79,8 @@ export const ArtCard = (props: ArtCardProps) => {
           <ArtContent
             pubkey={pubkey}
 
-            extension={image}
+            extension={file || image}
             uri={image}
-            animationURL={animationURL}
             category={category}
 
             preview={preview}
