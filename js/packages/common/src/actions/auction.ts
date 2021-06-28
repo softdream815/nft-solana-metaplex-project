@@ -15,7 +15,6 @@ import { findProgramAddress } from '../utils';
 export const AUCTION_PREFIX = 'auction';
 export const METADATA = 'metadata';
 export const EXTENDED = 'extended';
-export const MAX_AUCTION_DATA_EXTENDED_SIZE = 8 + 9 + 2 + 200;
 
 export enum AuctionState {
   Created = 0,
@@ -90,23 +89,6 @@ export const BidderPotParser: AccountParser = (
 
 export const decodeBidderPot = (buffer: Buffer) => {
   return deserializeUnchecked(AUCTION_SCHEMA, BidderPot, buffer) as BidderPot;
-};
-
-export const AuctionDataExtendedParser: AccountParser = (
-  pubkey: PublicKey,
-  account: AccountInfo<Buffer>,
-) => ({
-  pubkey,
-  account,
-  info: decodeAuctionDataExtended(account.data),
-});
-
-export const decodeAuctionDataExtended = (buffer: Buffer) => {
-  return deserializeUnchecked(
-    AUCTION_SCHEMA,
-    AuctionDataExtended,
-    buffer,
-  ) as AuctionDataExtended;
 };
 
 export const BidderMetadataParser: AccountParser = (
@@ -341,24 +323,7 @@ export class WinnerLimit {
   }
 }
 
-export interface IPartialCreateAuctionArgs {
-  /// How many winners are allowed for this auction. See AuctionData.
-  winners: WinnerLimit;
-  /// End time is the cut-off point that the auction is forced to end by. See AuctionData.
-  endAuctionAt: BN | null;
-  /// Gap time is how much time after the previous bid where the auction ends. See AuctionData.
-  auctionGap: BN | null;
-  /// Token mint for the SPL token used for bidding.
-  tokenMint: PublicKey;
-
-  priceFloor: PriceFloor;
-
-  tickSize: BN | null;
-
-  gapTickSizePercentage: number | null;
-}
-
-export class CreateAuctionArgs implements IPartialCreateAuctionArgs {
+class CreateAuctionArgs {
   instruction: number = 1;
   /// How many winners are allowed for this auction. See AuctionData.
   winners: WinnerLimit;
@@ -375,10 +340,6 @@ export class CreateAuctionArgs implements IPartialCreateAuctionArgs {
 
   priceFloor: PriceFloor;
 
-  tickSize: BN | null;
-
-  gapTickSizePercentage: number | null;
-
   constructor(args: {
     winners: WinnerLimit;
     endAuctionAt: BN | null;
@@ -387,8 +348,6 @@ export class CreateAuctionArgs implements IPartialCreateAuctionArgs {
     authority: PublicKey;
     resource: PublicKey;
     priceFloor: PriceFloor;
-    tickSize: BN | null;
-    gapTickSizePercentage: number | null;
   }) {
     this.winners = args.winners;
     this.endAuctionAt = args.endAuctionAt;
@@ -397,8 +356,6 @@ export class CreateAuctionArgs implements IPartialCreateAuctionArgs {
     this.authority = args.authority;
     this.resource = args.resource;
     this.priceFloor = args.priceFloor;
-    this.tickSize = args.tickSize;
-    this.gapTickSizePercentage = args.gapTickSizePercentage;
   }
 }
 
@@ -445,8 +402,6 @@ export const AUCTION_SCHEMA = new Map<any, any>([
         ['authority', 'pubkey'],
         ['resource', 'pubkey'],
         ['priceFloor', PriceFloor],
-        ['tickSize', { kind: 'option', type: 'u64' }],
-        ['gapTickSizePercentage', { kind: 'option', type: 'u8' }],
       ],
     },
   ],
@@ -586,20 +541,39 @@ export const decodeAuctionData = (buffer: Buffer) => {
 };
 
 export async function createAuction(
-  settings: CreateAuctionArgs,
+  winners: WinnerLimit,
+  resource: PublicKey,
+  endAuctionAt: BN | null,
+  auctionGap: BN | null,
+  priceFloor: PriceFloor,
+  tokenMint: PublicKey,
+  authority: PublicKey,
   creator: PublicKey,
   instructions: TransactionInstruction[],
 ) {
   const auctionProgramId = programIds().auction;
 
-  const data = Buffer.from(serialize(AUCTION_SCHEMA, settings));
+  const data = Buffer.from(
+    serialize(
+      AUCTION_SCHEMA,
+      new CreateAuctionArgs({
+        winners,
+        resource,
+        endAuctionAt,
+        auctionGap,
+        tokenMint,
+        authority,
+        priceFloor,
+      }),
+    ),
+  );
 
   const auctionKey: PublicKey = (
     await findProgramAddress(
       [
         Buffer.from(AUCTION_PREFIX),
         auctionProgramId.toBuffer(),
-        settings.resource.toBuffer(),
+        resource.toBuffer(),
       ],
       auctionProgramId,
     )
@@ -617,10 +591,7 @@ export async function createAuction(
       isWritable: true,
     },
     {
-      pubkey: await getAuctionExtended({
-        auctionProgramId,
-        resource: settings.resource,
-      }),
+      pubkey: await getAuctionExtended({ auctionProgramId, resource }),
       isSigner: false,
       isWritable: true,
     },
