@@ -316,12 +316,9 @@ pub fn place_bid<'r, 'b: 'r>(
 
     // Serialize new Auction State
     auction.last_bid = Some(clock.unix_timestamp);
-    auction.place_bid(
-        Bid(*accounts.bidder.key, args.amount),
-        auction_extended.tick_size,
-        auction_extended.gap_tick_size_percentage,
-        clock.unix_timestamp,
-    )?;
+    auction
+        .bid_state
+        .place_bid(Bid(*accounts.bidder.key, args.amount))?;
     auction.serialize(&mut *accounts.auction.data.borrow_mut())?;
 
     // Update latest metadata with results from the bid.

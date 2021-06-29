@@ -12,7 +12,6 @@ export async function decommissionAuctionManager(
   auctionManager: PublicKey,
   auction: PublicKey,
   authority: PublicKey,
-  vault: PublicKey,
   instructions: TransactionInstruction[],
 ) {
   const PROGRAM_IDS = programIds();
@@ -42,11 +41,6 @@ export async function decommissionAuctionManager(
       isWritable: false,
     },
 
-    {
-      pubkey: vault,
-      isSigner: false,
-      isWritable: false,
-    },
     {
       pubkey: store,
       isSigner: false,

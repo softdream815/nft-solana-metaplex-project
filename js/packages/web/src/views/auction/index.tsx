@@ -64,7 +64,6 @@ export const AuctionItem = ({
         className="artwork-image stack-item"
         style={style}
         active={active}
-        allowMeshRender={true}
       />
     </div>
   );

@@ -11,10 +11,7 @@ use {
         program::invoke_signed,
         pubkey::Pubkey,
     },
-    spl_auction::{
-        instruction::{start_auction_instruction, StartAuctionArgs},
-        processor::AuctionData,
-    },
+    spl_auction::instruction::{start_auction_instruction, StartAuctionArgs},
 };
 
 pub fn issue_start_auction<'a>(
@@ -48,12 +45,7 @@ pub fn process_start_auction(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     let clock_info = next_account_info(account_info_iter)?;
 
     let mut auction_manager = AuctionManager::from_account_info(auction_manager_info)?;
-    let auction = AuctionData::from_account_info(auction_info)?;
     let store = Store::from_account_info(store_info)?;
-
-    if auction.authority != *auction_manager_info.key {
-        return Err(MetaplexError::AuctionAuthorityMismatch.into());
-    }
 
     assert_authority_correct(&auction_manager, authority_info)?;
     assert_owned_by(auction_info, &store.auction_program)?;

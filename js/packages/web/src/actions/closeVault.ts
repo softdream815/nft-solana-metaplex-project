@@ -24,6 +24,7 @@ export async function closeVault(
   redeemTreasury: PublicKey,
   priceMint: PublicKey,
   externalPriceAccount: PublicKey,
+  setAuthorityToAuctionManager: boolean,
 ): Promise<{
   instructions: TransactionInstruction[];
   signers: Keypair[];
@@ -44,6 +45,13 @@ export async function closeVault(
         vault.toBuffer(),
       ],
       PROGRAM_IDS.auction,
+    )
+  )[0];
+
+  const auctionManagerKey: PublicKey = (
+    await findProgramAddress(
+      [Buffer.from(METAPLEX_PREFIX), auctionKey.toBuffer()],
+      PROGRAM_IDS.metaplex,
     )
   )[0];
 
@@ -109,7 +117,7 @@ export async function closeVault(
     fractionMint,
     fractionTreasury,
     redeemTreasury,
-    wallet.publicKey,
+    setAuthorityToAuctionManager ? auctionManagerKey : wallet.publicKey,
     wallet.publicKey,
     transferAuthority.publicKey,
     externalPriceAccount,

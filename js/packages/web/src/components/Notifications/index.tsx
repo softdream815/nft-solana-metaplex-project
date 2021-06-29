@@ -11,7 +11,10 @@ import {
   useWallet,
   VaultState,
 } from '@oyster/common';
-import { Connection, PublicKey } from '@solana/web3.js';
+import {
+  Connection,
+  PublicKey,
+} from '@solana/web3.js';
 import { Badge, Popover, List } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -23,7 +26,10 @@ import { settle } from '../../actions/settle';
 
 import { QUOTE_MINT } from '../../constants';
 import { useMeta } from '../../contexts';
-import { AuctionViewState, useAuctions } from '../../hooks';
+import {
+  AuctionViewState,
+  useAuctions,
+} from '../../hooks';
 import './index.less';
 import { WalletAdapter } from '@solana/wallet-base';
 interface NotificationCard {
@@ -174,7 +180,7 @@ export function useSettlementAuctions({
   notifications: NotificationCard[];
 }) {
   const { accountByMint } = useUserAccounts();
-  const walletPubkey = wallet?.publicKey;
+  const walletPubkey = wallet?.publicKey?.toBase58() || '';
   const { bidderPotsByAuctionAndBidder } = useMeta();
   const auctionsNeedingSettling = useAuctions(AuctionViewState.Ended);
 
@@ -185,8 +191,7 @@ export function useSettlementAuctions({
       const nextBatch = auctionsNeedingSettling
         .filter(
           a =>
-            walletPubkey &&
-            a.auctionManager.info.authority.equals(walletPubkey) &&
+            a.auctionManager.info.authority.toBase58() === walletPubkey &&
             a.auction.info.ended(),
         )
         .sort(
@@ -265,6 +270,7 @@ export function useSettlementAuctions({
               myPayingAccount?.pubkey,
               accountByMint,
             );
+            const PROGRAM_IDS = programIds();
             if (wallet?.publicKey) {
               const ata = await getPersonalEscrowAta(wallet);
               if (ata) await closePersonalEscrow(connection, wallet, ata);

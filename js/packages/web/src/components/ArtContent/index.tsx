@@ -1,27 +1,25 @@
 import React, { Ref, useCallback, useEffect, useRef, useState } from 'react';
 import { Image } from 'antd';
-import { MetadataCategory, MetadataFile } from '@oyster/common';
+import { MetadataCategory } from '@oyster/common';
 import { MeshViewer } from '../MeshViewer';
 import { ThreeDots } from '../MyLoader';
 import { useCachedImage, useExtendedArt } from '../../hooks';
 import { Stream, StreamPlayerApi } from '@cloudflare/stream-react';
+import { useInView } from 'react-intersection-observer';
 import { PublicKey } from '@solana/web3.js';
-import { getLast } from '../../utils/utils';
 
 const MeshArtContent = ({
   uri,
-  animationUrl,
   className,
   style,
   files,
 }: {
   uri?: string;
-  animationUrl?: string;
   className?: string;
   style?: React.CSSProperties;
-  files?: (MetadataFile | string)[];
+  files?: string[];
 }) => {
-  const renderURL = files && files.length > 0 && typeof files[0] === 'string'  ? files[0] : animationUrl;
+  const renderURL = files && files.length > 0 ? files[0] : uri;
   const { isLoading } = useCachedImage(renderURL || '', true);
 
   if (isLoading) {
@@ -64,18 +62,16 @@ const CachedImageContent = ({
 }
 
 const VideoArtContent = ({
+  extension,
   className,
   style,
   files,
-  uri,
-  animationURL,
   active,
 }: {
+  extension?: string;
   className?: string;
   style?: React.CSSProperties;
-  files?: (MetadataFile | string)[];
-  uri?: string;
-  animationURL?: string;
+  files?: string[];
   active?: boolean;
 }) => {
   const [playerApi, setPlayerApi] = useState<StreamPlayerApi>();
@@ -94,13 +90,9 @@ const VideoArtContent = ({
   }, [active, playerApi]);
 
   const likelyVideo = (files || []).filter((f, index, arr) => {
-    if(typeof f !== 'string') {
-      return false;
-    }
-
     // TODO: filter by fileType
     return arr.length >= 2 ? index === 1 : index === 0;
-  })?.[0] as string;
+  })[0];
 
   const content = (
     likelyVideo && likelyVideo.startsWith('https://watch.videodelivery.net/') ? (
@@ -124,17 +116,15 @@ const VideoArtContent = ({
       <video
         className={className}
         playsInline={true}
-        autoPlay={true}
+        autoPlay={false}
         muted={true}
         controls={true}
         controlsList="nodownload"
         style={style}
         loop={true}
-        poster={uri}
+        poster={extension}
       >
-        {likelyVideo && <source src={likelyVideo} type="video/mp4" style={style} />}
-        {animationURL && <source src={animationURL} type="video/mp4" style={style} />}
-        {files?.filter(f => typeof f !== 'string').map((f: any) => <source src={f.uri} type={f.type} style={style} />)}
+        <source src={likelyVideo} type="video/mp4" style={style} />
       </video>
     )
   );
@@ -155,7 +145,7 @@ export const ArtContent = ({
   pubkey,
 
   uri,
-  animationURL,
+  extension,
   files,
 }: {
   category?: MetadataCategory;
@@ -168,29 +158,24 @@ export const ArtContent = ({
   active?: boolean;
   allowMeshRender?: boolean;
   pubkey?: PublicKey | string,
+
+  extension?: string;
   uri?: string;
-  animationURL?: string;
-  files?: (MetadataFile | string)[];
+  files?: string[];
 }) => {
   const id = typeof pubkey === 'string' ? pubkey : pubkey?.toBase58() || '';
 
   const { ref, data } = useExtendedArt(id);
 
   if(pubkey && data) {
-    files = data.properties.files;
+    files = data.properties.files?.filter(f => typeof f === 'string') as string[];
     uri = data.image;
-    animationURL = data.animation_url;
     category = data.properties.category;
   }
 
-  animationURL = animationURL || '';
-
-  const animationUrlExt = new URLSearchParams(getLast(animationURL.split("?"))).get("ext");
-
-  if (allowMeshRender && (category === 'vr' || animationUrlExt === 'glb' || animationUrlExt === 'gltf')) {
+  if (allowMeshRender&& (extension?.endsWith('.glb') || category === 'vr')) {
     return <MeshArtContent
       uri={uri}
-      animationUrl={animationURL}
       className={className}
       style={style}
       files={files}/>;
@@ -198,11 +183,10 @@ export const ArtContent = ({
 
   const content = category === 'video' ? (
     <VideoArtContent
+      extension={extension}
       className={className}
       style={style}
       files={files}
-      uri={uri}
-      animationURL={animationURL}
       active={active}
     />
   ) : (
