@@ -3,7 +3,7 @@ export const cleanName = (name?: string): string | undefined => {
     return undefined;
   }
 
-  return name.replace(/\s+/g, '-');
+  return name.replaceAll(' ', '-');
 };
 
 export const getLast = <T>(arr: T[]) => {
