@@ -22,6 +22,7 @@ import {
 import { Connection, PublicKey } from '@solana/web3.js';
 import { saveAdmin } from '../../actions/saveAdmin';
 import { WalletAdapter } from '@solana/wallet-base';
+import './index.less';
 
 const { Content } = Layout;
 export const AdminView = () => {
@@ -83,8 +84,8 @@ function ArtistModal({
           } catch {
             notify({
               message: 'Only valid Solana addresses are supported',
-              type: 'error',
-            });
+              type: 'error'
+            })
           }
         }}
         onCancel={() => {
@@ -116,12 +117,11 @@ function InnerAdminView({
   connection: Connection;
   wallet: WalletAdapter;
 }) {
-  const [newStore, setNewStore] = useState(
-    store && store.info && new Store(store.info),
-  );
+  const [newStore, setNewStore] = useState(store && store.info && new Store(store.info));
   const [updatedCreators, setUpdatedCreators] = useState<
     Record<string, WhitelistedCreator>
   >({});
+
 
   if (!store || !newStore) {
     return <p>Store is not defined</p>;
@@ -234,12 +234,8 @@ function InnerAdminView({
               key,
               address: uniqueCreatorsWithUpdates[key].address,
               activated: uniqueCreatorsWithUpdates[key].activated,
-              name:
-                uniqueCreatorsWithUpdates[key].name ||
-                shortenAddress(
-                  uniqueCreatorsWithUpdates[key].address.toBase58(),
-                ),
-              image: uniqueCreatorsWithUpdates[key].image,
+              name: uniqueCreatorsWithUpdates[key].name || shortenAddress(uniqueCreatorsWithUpdates[key].address.toBase58()),
+              image: uniqueCreatorsWithUpdates[key].image
             }))}
           ></Table>
         </Row>

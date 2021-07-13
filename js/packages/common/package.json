@@ -5,8 +5,7 @@
   "main": "dist/lib/index.js",
   "types": "dist/lib/index.d.ts",
   "exports": {
-    ".": "./dist/lib",
-    "./styles.css": "./dist/lib/styles.css"
+    ".": "./dist/lib/"
   },
   "license": "Apache-2.0",
   "publishConfig": {

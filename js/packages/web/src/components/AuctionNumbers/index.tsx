@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Row, Col } from 'antd';
 
+import './../AuctionCard/index.less';
 import {
   formatTokenAmount,
   useMint,

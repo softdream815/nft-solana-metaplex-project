@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardProps, Button, Badge } from 'antd';
 import { MetadataCategory } from '@oyster/common';
 import { ArtContent } from './../ArtContent';
+import './index.less';
 import { useArt } from '../../hooks';
 import { PublicKey } from '@solana/web3.js';
 import { Artist, ArtType } from '../../types';
@@ -80,9 +81,11 @@ export const ArtCard = (props: ArtCardProps) => {
           )}
           <ArtContent
             pubkey={pubkey}
+
             uri={image}
             animationURL={animationURL}
             category={category}
+
             preview={preview}
             height={height}
             width={width}
@@ -91,7 +94,7 @@ export const ArtCard = (props: ArtCardProps) => {
       }
       {...rest}
     >
-      <Meta
+     <Meta
         title={`${name}`}
         description={
           <>
