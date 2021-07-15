@@ -19,15 +19,12 @@
     "isolatedModules": true,
     "downlevelIteration": true,
     "noEmit": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "typeRoots": [
       "../../types"
     ]
   },
   "include": [
     "src"
-  ],
-  "exclude": [
-    "node_modules"
   ]
 }
