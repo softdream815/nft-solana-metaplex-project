@@ -11,14 +11,15 @@ import {
   Data,
   Creator,
   findProgramAddress,
-  WalletSigner,
+  StringPublicKey,
+  toPublicKey,
 } from '@oyster/common';
 import React from 'react';
 import { MintLayout, Token } from '@solana/spl-token';
+import { WalletAdapter } from '@solana/wallet-base';
 import {
   Keypair,
   Connection,
-  PublicKey,
   SystemProgram,
   TransactionInstruction,
 } from '@solana/web3.js';
@@ -26,7 +27,6 @@ import crypto from 'crypto';
 import { getAssetCostToStore } from '../utils/assets';
 import { AR_SOL_HOLDER_ID } from '../utils/ids';
 import BN from 'bn.js';
-import { WalletNotConnectedError } from '@solana/wallet-adapter-base';
 const RESERVED_TXN_MANIFEST = 'manifest.json';
 
 interface IArweaveResult {
@@ -41,7 +41,7 @@ interface IArweaveResult {
 
 export const mintNFT = async (
   connection: Connection,
-  wallet: WalletSigner,
+  wallet: WalletAdapter | undefined,
   env: ENV,
   files: File[],
   metadata: {
@@ -57,9 +57,11 @@ export const mintNFT = async (
   },
   maxSupply?: number,
 ): Promise<{
-  metadataAccount: PublicKey;
+  metadataAccount: StringPublicKey;
 } | void> => {
-  if (!wallet.publicKey) return;
+  if (!wallet?.publicKey) {
+    return;
+  }
 
   const metadataContent = {
     name: metadata.name,
@@ -73,7 +75,7 @@ export const mintNFT = async (
       ...metadata.properties,
       creators: metadata.creators?.map(creator => {
         return {
-          address: creator.address.toBase58(),
+          address: creator.address,
           share: creator.share,
         };
       }),
@@ -102,7 +104,7 @@ export const mintNFT = async (
   // twice post Arweave. We store in an account (payer) and use it post-Arweave to update MD with new link
   // then give control back to the user.
   // const payer = new Account();
-  const payerPublicKey = wallet.publicKey;
+  const payerPublicKey = wallet.publicKey.toBase58();
   const instructions: TransactionInstruction[] = [...pushInstructions];
   const signers: Keypair[] = [...pushSigners];
 
@@ -113,17 +115,17 @@ export const mintNFT = async (
     mintRent,
     0,
     // Some weird bug with phantom where it's public key doesnt mesh with data encode wellff
-    payerPublicKey,
-    payerPublicKey,
+    toPublicKey(payerPublicKey),
+    toPublicKey(payerPublicKey),
     signers,
-  );
+  ).toBase58();
 
-  const recipientKey: PublicKey = (
+  const recipientKey = (
     await findProgramAddress(
       [
         wallet.publicKey.toBuffer(),
         programIds().token.toBuffer(),
-        mintKey.toBuffer(),
+        toPublicKey(mintKey).toBuffer(),
       ],
       programIds().associatedToken,
     )
@@ -131,10 +133,10 @@ export const mintNFT = async (
 
   createAssociatedTokenAccountInstruction(
     instructions,
-    recipientKey,
+    toPublicKey(recipientKey),
     wallet.publicKey,
     wallet.publicKey,
-    mintKey,
+    toPublicKey(mintKey),
   );
 
   const metadataAccount = await createMetadata(
@@ -149,7 +151,7 @@ export const mintNFT = async (
     mintKey,
     payerPublicKey,
     instructions,
-    wallet.publicKey,
+    wallet.publicKey.toBase58(),
   );
 
   // TODO: enable when using payer account to avoid 2nd popup
@@ -184,7 +186,7 @@ export const mintNFT = async (
 
   const tags = realFiles.reduce(
     (acc: Record<string, Array<{ name: string; value: string }>>, f) => {
-      acc[f.name] = [{ name: 'mint', value: mintKey.toBase58() }];
+      acc[f.name] = [{ name: 'mint', value: mintKey }];
       return acc;
     },
     {},
@@ -236,9 +238,9 @@ export const mintNFT = async (
     updateInstructions.push(
       Token.createMintToInstruction(
         TOKEN_PROGRAM_ID,
-        mintKey,
-        recipientKey,
-        payerPublicKey,
+        toPublicKey(mintKey),
+        toPublicKey(recipientKey),
+        toPublicKey(payerPublicKey),
         [],
         1,
       ),
@@ -303,7 +305,7 @@ export const mintNFT = async (
 };
 
 export const prepPayForFilesTxn = async (
-  wallet: WalletSigner,
+  wallet: WalletAdapter,
   files: File[],
   metadata: any,
 ): Promise<{

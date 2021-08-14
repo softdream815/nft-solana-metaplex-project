@@ -1,14 +1,8 @@
-import {
-  Keypair,
-  Connection,
-  PublicKey,
-  TransactionInstruction,
-} from '@solana/web3.js';
-import { actions, models, WalletSigner } from '@oyster/common';
+import { Keypair, Connection, TransactionInstruction } from '@solana/web3.js';
+import { actions, models, StringPublicKey, toPublicKey } from '@oyster/common';
 
 import { AccountLayout } from '@solana/spl-token';
 import BN from 'bn.js';
-import { WalletNotConnectedError } from '@solana/wallet-adapter-base';
 const { createTokenAccount, activateVault, combineVault } = actions;
 const { approve } = models;
 
@@ -16,19 +10,17 @@ const { approve } = models;
 // authority (that may or may not exist yet.)
 export async function closeVault(
   connection: Connection,
-  wallet: WalletSigner,
-  vault: PublicKey,
-  fractionMint: PublicKey,
-  fractionTreasury: PublicKey,
-  redeemTreasury: PublicKey,
-  priceMint: PublicKey,
-  externalPriceAccount: PublicKey,
+  wallet: any,
+  vault: StringPublicKey,
+  fractionMint: StringPublicKey,
+  fractionTreasury: StringPublicKey,
+  redeemTreasury: StringPublicKey,
+  priceMint: StringPublicKey,
+  externalPriceAccount: StringPublicKey,
 ): Promise<{
   instructions: TransactionInstruction[];
   signers: Keypair[];
 }> {
-  if (!wallet.publicKey) throw new WalletNotConnectedError();
-
   const accountRentExempt = await connection.getMinimumBalanceForRentExemption(
     AccountLayout.span,
   );
@@ -48,7 +40,7 @@ export async function closeVault(
     instructions,
     wallet.publicKey,
     accountRentExempt,
-    fractionMint,
+    toPublicKey(fractionMint),
     wallet.publicKey,
     signers,
   );
@@ -57,7 +49,7 @@ export async function closeVault(
     instructions,
     wallet.publicKey,
     accountRentExempt,
-    priceMint,
+    toPublicKey(priceMint),
     wallet.publicKey,
     signers,
   );
@@ -92,14 +84,14 @@ export async function closeVault(
 
   await combineVault(
     vault,
-    outstandingShareAccount,
-    payingTokenAccount,
+    outstandingShareAccount.toBase58(),
+    payingTokenAccount.toBase58(),
     fractionMint,
     fractionTreasury,
     redeemTreasury,
-    wallet.publicKey,
-    wallet.publicKey,
-    transferAuthority.publicKey,
+    wallet.publicKey.toBase58(),
+    wallet.publicKey.toBase58(),
+    transferAuthority.publicKey.toBase58(),
     externalPriceAccount,
     instructions,
   );

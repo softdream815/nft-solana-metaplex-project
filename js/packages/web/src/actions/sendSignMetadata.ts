@@ -1,27 +1,19 @@
-import {
-  Keypair,
-  Connection,
-  TransactionInstruction,
-  PublicKey,
-} from '@solana/web3.js';
+import { Keypair, Connection, TransactionInstruction } from '@solana/web3.js';
 import {
   sendTransactionWithRetry,
   signMetadata,
-  WalletSigner,
+  StringPublicKey,
 } from '@oyster/common';
-import { WalletNotConnectedError } from '@solana/wallet-adapter-base';
 
 export async function sendSignMetadata(
   connection: Connection,
-  wallet: WalletSigner,
-  metadata: PublicKey,
+  wallet: any,
+  metadata: StringPublicKey,
 ) {
-  if (!wallet.publicKey) throw new WalletNotConnectedError();
-
   let signers: Keypair[] = [];
   let instructions: TransactionInstruction[] = [];
 
-  await signMetadata(metadata, wallet.publicKey, instructions);
+  await signMetadata(metadata, wallet.publicKey.toBase58(), instructions);
 
   await sendTransactionWithRetry(
     connection,

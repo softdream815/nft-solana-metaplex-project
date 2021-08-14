@@ -1,32 +1,22 @@
 import { Keypair, Connection, TransactionInstruction } from '@solana/web3.js';
 import {
-  BidderMetadata,
-  ParsedAccount,
   sendTransactionsWithManualRetry,
   setAuctionAuthority,
   setVaultAuthority,
   TokenAccount,
-  WalletSigner,
 } from '@oyster/common';
 
 import { AuctionView } from '../hooks';
-import {
-  AuctionManagerStatus,
-  BidRedemptionTicket,
-  PrizeTrackingTicket,
-} from '../models/metaplex';
+import { AuctionManagerStatus } from '../models/metaplex';
 import { decommissionAuctionManager } from '../models/metaplex/decommissionAuctionManager';
 import { claimUnusedPrizes } from './claimUnusedPrizes';
-import { WalletNotConnectedError } from '@solana/wallet-adapter-base';
 
 export async function decommAuctionManagerAndReturnPrizes(
   connection: Connection,
-  wallet: WalletSigner,
+  wallet: any,
   auctionView: AuctionView,
   accountsByMint: Map<string, TokenAccount>,
 ) {
-  if (!wallet.publicKey) throw new WalletNotConnectedError();
-
   let signers: Array<Keypair[]> = [];
   let instructions: Array<TransactionInstruction[]> = [];
 
@@ -34,18 +24,18 @@ export async function decommAuctionManagerAndReturnPrizes(
     let decomSigners: Keypair[] = [];
     let decomInstructions: TransactionInstruction[] = [];
 
-    if (auctionView.auction.info.authority.equals(wallet.publicKey)) {
+    if (auctionView.auction.info.authority === wallet.publicKey.toBase58()) {
       await setAuctionAuthority(
         auctionView.auction.pubkey,
-        wallet.publicKey,
+        wallet.publicKey.toBase58(),
         auctionView.auctionManager.pubkey,
         decomInstructions,
       );
     }
-    if (auctionView.vault.info.authority.equals(wallet.publicKey)) {
+    if (auctionView.vault.info.authority === wallet.publicKey.toBase58()) {
       await setVaultAuthority(
         auctionView.vault.pubkey,
-        wallet.publicKey,
+        wallet.publicKey.toBase58(),
         auctionView.auctionManager.pubkey,
         decomInstructions,
       );
@@ -53,7 +43,7 @@ export async function decommAuctionManagerAndReturnPrizes(
     await decommissionAuctionManager(
       auctionView.auctionManager.pubkey,
       auctionView.auction.pubkey,
-      wallet.publicKey,
+      wallet.publicKey.toBase58(),
       auctionView.vault.pubkey,
       decomInstructions,
     );

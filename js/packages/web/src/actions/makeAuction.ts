@@ -1,50 +1,48 @@
-import { Keypair, PublicKey, TransactionInstruction } from '@solana/web3.js';
+import { Keypair, TransactionInstruction } from '@solana/web3.js';
 import {
   utils,
   actions,
   findProgramAddress,
   IPartialCreateAuctionArgs,
   CreateAuctionArgs,
-  WalletSigner,
+  StringPublicKey,
+  toPublicKey,
 } from '@oyster/common';
-import { WalletNotConnectedError } from '@solana/wallet-adapter-base';
 
 const { AUCTION_PREFIX, createAuction } = actions;
 
 // This command makes an auction
 export async function makeAuction(
-  wallet: WalletSigner,
-  vault: PublicKey,
+  wallet: any,
+  vault: StringPublicKey,
   auctionSettings: IPartialCreateAuctionArgs,
 ): Promise<{
-  auction: PublicKey;
+  auction: StringPublicKey;
   instructions: TransactionInstruction[];
   signers: Keypair[];
 }> {
-  if (!wallet.publicKey) throw new WalletNotConnectedError();
-
   const PROGRAM_IDS = utils.programIds();
 
   let signers: Keypair[] = [];
   let instructions: TransactionInstruction[] = [];
-  const auctionKey: PublicKey = (
+  const auctionKey = (
     await findProgramAddress(
       [
         Buffer.from(AUCTION_PREFIX),
-        PROGRAM_IDS.auction.toBuffer(),
-        vault.toBuffer(),
+        toPublicKey(PROGRAM_IDS.auction).toBuffer(),
+        toPublicKey(vault).toBuffer(),
       ],
-      PROGRAM_IDS.auction,
+      toPublicKey(PROGRAM_IDS.auction),
     )
   )[0];
 
   const fullSettings = new CreateAuctionArgs({
     ...auctionSettings,
-    authority: wallet.publicKey,
+    authority: wallet.publicKey.toBase58(),
     resource: vault,
   });
 
-  createAuction(fullSettings, wallet.publicKey, instructions);
+  createAuction(fullSettings, wallet.publicKey.toBase58(), instructions);
 
   return { instructions, signers, auction: auctionKey };
 }

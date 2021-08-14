@@ -6,6 +6,7 @@ import {
   METAPLEX_ID,
   VAULT_ID,
   METADATA_PROGRAM_ID,
+  toPublicKey,
 } from '@oyster/common';
 import React, {
   useCallback,
@@ -20,11 +21,7 @@ import { processAuctions } from './processAuctions';
 import { processMetaplexAccounts } from './processMetaplexAccounts';
 import { processMetaData } from './processMetaData';
 import { processVaultData } from './processVaultData';
-import {
-  loadAccounts,
-  makeSetter,
-  metadataByMintUpdater,
-} from './loadAccounts';
+import { loadAccounts, makeSetter, metadataByMintUpdater } from './loadAccounts';
 import { onChangeAccount } from './onChangeAccount';
 
 const MetaContext = React.createContext<MetaContextState>({
@@ -90,10 +87,7 @@ export function MetaProvider({ children = null as any }) {
     async metadataByMint => {
       try {
         if (!all) {
-          const { metadata, mintToMetadata } = await queryExtendedMetadata(
-            connection,
-            metadataByMint,
-          );
+          const {metadata, mintToMetadata} = await queryExtendedMetadata(connection, metadataByMint);
           setState(current => ({
             ...current,
             metadata,
@@ -128,7 +122,7 @@ export function MetaProvider({ children = null as any }) {
 
   const updateStateValue = useMemo<UpdateStateValueFunc>(
     () => (prop, key, value) => {
-      setState(current => makeSetter({ ...current })(prop, key, value));
+      setState(current => makeSetter({...current})(prop, key, value));
     },
     [setState],
   );
@@ -142,34 +136,30 @@ export function MetaProvider({ children = null as any }) {
     }
 
     const vaultSubId = connection.onProgramAccountChange(
-      VAULT_ID,
+      toPublicKey(VAULT_ID),
       onChangeAccount(processVaultData, updateStateValue, all),
     );
 
     const auctionSubId = connection.onProgramAccountChange(
-      AUCTION_ID,
+      toPublicKey(AUCTION_ID),
       onChangeAccount(processAuctions, updateStateValue, all),
     );
 
     const metaplexSubId = connection.onProgramAccountChange(
-      METAPLEX_ID,
+      toPublicKey(METAPLEX_ID),
       onChangeAccount(processMetaplexAccounts, updateStateValue, all),
     );
 
     const metaSubId = connection.onProgramAccountChange(
-      METADATA_PROGRAM_ID,
-      onChangeAccount(
-        processMetaData,
-        async (prop, key, value) => {
-          if (prop === 'metadataByMint') {
-            const nextState = await metadataByMintUpdater(value, state, all);
-            setState(nextState);
-          } else {
-            updateStateValue(prop, key, value);
-          }
-        },
-        all,
-      ),
+      toPublicKey(METADATA_PROGRAM_ID),
+      onChangeAccount(processMetaData, async (prop, key, value) => {
+        if (prop === 'metadataByMint') {
+          const nextState = await metadataByMintUpdater(value, state, all);
+          setState(nextState);
+        } else {
+          updateStateValue(prop, key, value);
+        }
+      }, all),
     );
 
     return () => {
@@ -231,3 +221,4 @@ export const useMeta = () => {
   const context = useContext(MetaContext);
   return context;
 };
+
