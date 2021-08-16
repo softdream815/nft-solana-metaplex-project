@@ -205,10 +205,7 @@ export const loadAccounts = async (connection: Connection, all: boolean) => {
   if (additionalPromises.length > 0) {
     console.log('Pulling editions for optimized metadata');
     let setOf100MetadataEditionKeys: string[] = [];
-    const editionPromises: Promise<{
-      keys: string[];
-      array: AccountInfo<Buffer>[];
-    }>[] = [];
+    const editionPromises = [];
 
     for (let i = 0; i < tempCache.metadata.length; i++) {
       let edition: StringPublicKey;

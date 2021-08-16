@@ -65,7 +65,9 @@ export const ArtSelector = (props: ArtSelectorProps) => {
               preview={false}
               onClick={open}
               close={() => {
-                setSelected(selected.filter(_ => _.metadata.pubkey !== key));
+                setSelected(
+                  selected.filter(_ => _.metadata.pubkey !== key),
+                );
                 confirm();
               }}
             />

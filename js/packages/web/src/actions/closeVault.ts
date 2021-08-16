@@ -1,12 +1,6 @@
 import { Keypair, Connection, TransactionInstruction } from '@solana/web3.js';
-import {
-  actions,
-  models,
-  StringPublicKey,
-  toPublicKey,
-  WalletSigner,
-} from '@oyster/common';
-import { WalletNotConnectedError } from '@solana/wallet-adapter-base';
+import { actions, models, StringPublicKey, toPublicKey } from '@oyster/common';
+
 import { AccountLayout } from '@solana/spl-token';
 import BN from 'bn.js';
 const { createTokenAccount, activateVault, combineVault } = actions;
@@ -16,7 +10,7 @@ const { approve } = models;
 // authority (that may or may not exist yet.)
 export async function closeVault(
   connection: Connection,
-  wallet: WalletSigner,
+  wallet: any,
   vault: StringPublicKey,
   fractionMint: StringPublicKey,
   fractionTreasury: StringPublicKey,
@@ -27,8 +21,6 @@ export async function closeVault(
   instructions: TransactionInstruction[];
   signers: Keypair[];
 }> {
-  if (!wallet.publicKey) throw new WalletNotConnectedError();
-
   const accountRentExempt = await connection.getMinimumBalanceForRentExemption(
     AccountLayout.span,
   );
@@ -40,7 +32,7 @@ export async function closeVault(
     vault,
     fractionMint,
     fractionTreasury,
-    wallet.publicKey.toBase58(),
+    wallet.publicKey,
     instructions,
   );
 

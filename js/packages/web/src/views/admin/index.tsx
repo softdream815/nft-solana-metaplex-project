@@ -19,12 +19,12 @@ import {
   shortenAddress,
   useConnection,
   useUserAccounts,
+  useWallet,
   StringPublicKey,
-  WalletSigner,
 } from '@oyster/common';
-import { useWallet } from '@solana/wallet-adapter-react';
 import { Connection } from '@solana/web3.js';
 import { saveAdmin } from '../../actions/saveAdmin';
+import { WalletAdapter } from '@solana/wallet-base';
 import { useMemo } from 'react';
 import {
   convertMasterEditions,
@@ -35,15 +35,15 @@ const { Content } = Layout;
 export const AdminView = () => {
   const { store, whitelistedCreatorsByCreator } = useMeta();
   const connection = useConnection();
-  const wallet = useWallet();
+  const { wallet, connected } = useWallet();
 
-  return store && connection && wallet.connected ? (
+  return store && connection && wallet && connected ? (
     <InnerAdminView
       store={store}
       whitelistedCreatorsByCreator={whitelistedCreatorsByCreator}
       connection={connection}
       wallet={wallet}
-      connected={wallet.connected}
+      connected={connected}
     />
   ) : (
     <Spin />
@@ -124,7 +124,7 @@ function InnerAdminView({
     ParsedAccount<WhitelistedCreator>
   >;
   connection: Connection;
-  wallet: WalletSigner;
+  wallet: WalletAdapter;
   connected: boolean;
 }) {
   const [newStore, setNewStore] = useState(
@@ -133,11 +133,10 @@ function InnerAdminView({
   const [updatedCreators, setUpdatedCreators] = useState<
     Record<string, WhitelistedCreator>
   >({});
-  const [filteredMetadata, setFilteredMetadata] =
-    useState<{
-      available: ParsedAccount<MasterEditionV1>[];
-      unavailable: ParsedAccount<MasterEditionV1>[];
-    }>();
+  const [filteredMetadata, setFilteredMetadata] = useState<{
+    available: ParsedAccount<MasterEditionV1>[];
+    unavailable: ParsedAccount<MasterEditionV1>[];
+  }>();
   const [loading, setLoading] = useState<boolean>();
   const { metadata, masterEditions } = useMeta();
 
@@ -269,7 +268,9 @@ function InnerAdminView({
               activated: uniqueCreatorsWithUpdates[key].activated,
               name:
                 uniqueCreatorsWithUpdates[key].name ||
-                shortenAddress(uniqueCreatorsWithUpdates[key].address),
+                shortenAddress(
+                  uniqueCreatorsWithUpdates[key].address,
+                ),
               image: uniqueCreatorsWithUpdates[key].image,
             }))}
           ></Table>

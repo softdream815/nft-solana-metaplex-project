@@ -13,10 +13,10 @@ import {
   findProgramAddress,
   StringPublicKey,
   toPublicKey,
-  WalletSigner,
 } from '@oyster/common';
 import React from 'react';
 import { MintLayout, Token } from '@solana/spl-token';
+import { WalletAdapter } from '@solana/wallet-base';
 import {
   Keypair,
   Connection,
@@ -41,7 +41,7 @@ interface IArweaveResult {
 
 export const mintNFT = async (
   connection: Connection,
-  wallet: WalletSigner | undefined,
+  wallet: WalletAdapter | undefined,
   env: ENV,
   files: File[],
   metadata: {
@@ -59,7 +59,9 @@ export const mintNFT = async (
 ): Promise<{
   metadataAccount: StringPublicKey;
 } | void> => {
-  if (!wallet?.publicKey) return;
+  if (!wallet?.publicKey) {
+    return;
+  }
 
   const metadataContent = {
     name: metadata.name,
@@ -303,7 +305,7 @@ export const mintNFT = async (
 };
 
 export const prepPayForFilesTxn = async (
-  wallet: WalletSigner,
+  wallet: WalletAdapter,
   files: File[],
   metadata: any,
 ): Promise<{

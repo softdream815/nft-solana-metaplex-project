@@ -11,11 +11,10 @@ import {
   toPublicKey,
   useConnection,
   useUserAccounts,
+  useWallet,
   VaultState,
-  WalletSigner,
 } from '@oyster/common';
-import { useWallet } from '@solana/wallet-adapter-react';
-import { Connection } from '@solana/web3.js';
+import { Connection, PublicKey } from '@solana/web3.js';
 import { Badge, Popover, List } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -25,10 +24,11 @@ import { sendSignMetadata } from '../../actions/sendSignMetadata';
 import { unwindVault } from '../../actions/unwindVault';
 import { settle } from '../../actions/settle';
 import { startAuctionManually } from '../../actions/startAuctionManually';
+
 import { QUOTE_MINT } from '../../constants';
 import { useMeta } from '../../contexts';
 import { AuctionViewState, useAuctions } from '../../hooks';
-
+import { WalletAdapter } from '@solana/wallet-base';
 interface NotificationCard {
   id: string;
   title: string;
@@ -99,11 +99,10 @@ function RunAction({
 }
 
 export async function getPersonalEscrowAta(
-  wallet: WalletSigner | undefined,
+  wallet: WalletAdapter | undefined,
 ): Promise<StringPublicKey | undefined> {
   const PROGRAM_IDS = programIds();
-  if (!wallet?.publicKey) return;
-
+  if (!wallet?.publicKey) return undefined;
   return (
     await findProgramAddress(
       [
@@ -122,7 +121,7 @@ export function useCollapseWrappedSol({
   notifications,
 }: {
   connection: Connection;
-  wallet: WalletSigner;
+  wallet: WalletAdapter | undefined;
   notifications: NotificationCard[];
 }) {
   const [showNotification, setShowNotification] = useState(false);
@@ -130,9 +129,7 @@ export function useCollapseWrappedSol({
     const ata = await getPersonalEscrowAta(wallet);
     if (ata) {
       try {
-        const balance = await connection.getTokenAccountBalance(
-          toPublicKey(ata),
-        );
+        const balance = await connection.getTokenAccountBalance(toPublicKey(ata));
 
         if ((balance && balance.value.uiAmount) || 0 > 0) {
           setShowNotification(true);
@@ -176,7 +173,7 @@ export function useSettlementAuctions({
   notifications,
 }: {
   connection: Connection;
-  wallet: WalletSigner;
+  wallet: WalletAdapter | undefined;
   notifications: NotificationCard[];
 }) {
   const { accountByMint } = useUserAccounts();
@@ -217,7 +214,8 @@ export function useSettlementAuctions({
             ) {
               setValidDiscoveredEndedAuctions(old => ({
                 ...old,
-                [av.auctionManager.pubkey]: balance.value.uiAmount || 0,
+                [av.auctionManager.pubkey]:
+                  balance.value.uiAmount || 0,
               }));
             }
           } catch (e) {
@@ -274,7 +272,7 @@ export function useSettlementAuctions({
               myPayingAccount?.pubkey,
               accountByMint,
             );
-            if (wallet.publicKey) {
+            if (wallet?.publicKey) {
               const ata = await getPersonalEscrowAta(wallet);
               if (ata) await closePersonalEscrow(connection, wallet, ata);
             }
@@ -302,12 +300,12 @@ export function Notifications() {
 
   const upcomingAuctions = useAuctions(AuctionViewState.Upcoming);
   const connection = useConnection();
-  const wallet = useWallet();
+  const { wallet } = useWallet();
   const { accountByMint } = useUserAccounts();
 
   const notifications: NotificationCard[] = [];
 
-  const walletPubkey = wallet.publicKey?.toBase58() || '';
+  const walletPubkey = wallet?.publicKey?.toBase58() || '';
 
   useCollapseWrappedSol({ connection, wallet, notifications });
 
@@ -402,8 +400,8 @@ export function Notifications() {
       title: 'You have a new artwork to approve!',
       description: (
         <span>
-          {whitelistedCreatorsByCreator[m.info.updateAuthority]?.info?.name ||
-            m.pubkey}{' '}
+          {whitelistedCreatorsByCreator[m.info.updateAuthority]?.info
+            ?.name || m.pubkey}{' '}
           wants you to approve that you helped create their art{' '}
           <Link to={`/art/${m.pubkey}`}>here.</Link>
         </span>
